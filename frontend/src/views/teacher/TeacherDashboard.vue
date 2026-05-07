@@ -8,6 +8,7 @@
       </div>
       <nav>
         <button :class="{ active: tab === 'sessions' }" @click="tab = 'sessions'; detailSession = null">📋 My Sessions</button>
+        <button @click="certificateModalOpen = true">🎓 Generate Certificate</button>
         <button :class="{ active: tab === 'new' }" @click="tab = 'new'">➕ New Session</button>
       </nav>
       <div class="sidebar-footer">
@@ -29,14 +30,14 @@
       <div v-if="detailSession">
         <div class="back-row">
           <button class="btn btn-secondary btn-sm" @click="detailSession = null">← Back</button>
-          <h2 class="page-title">{{ detailSession.session.name }}</h2>
+          <h2 class="page-title">{{ activeDetailSession.name }}</h2>
           <div class="session-status">
-            <span class="badge" :class="detailSession.session.active ? 'badge-green' : 'badge-red'">
-              {{ detailSession.session.active ? '● Active' : '○ Inactive' }}
+            <span class="badge" :class="activeDetailSession.active ? 'badge-green' : 'badge-red'">
+              {{ activeDetailSession.active ? '● Active' : '○ Inactive' }}
             </span>
-            <button class="btn btn-sm" :class="detailSession.session.active ? 'btn-danger' : 'btn-success'"
-                    @click="toggleSession(detailSession.session.id, !detailSession.session.active)">
-              {{ detailSession.session.active ? 'Deactivate' : 'Activate' }}
+            <button class="btn btn-sm" :class="activeDetailSession.active ? 'btn-danger' : 'btn-success'"
+                    @click="toggleSession(activeDetailSession.id, !activeDetailSession.active)">
+              {{ activeDetailSession.active ? 'Deactivate' : 'Activate' }}
             </button>
           </div>
         </div>
@@ -46,26 +47,26 @@
           <div class="qr-left">
             <h3>Session QR Code</h3>
             <p>Share this with students to start the challenge</p>
-            <code class="token-code">Token: {{ detailSession.session.token }}</code>
+            <code class="token-code">Token: {{ activeDetailSession.token }}</code>
           </div>
           <div class="qr-img-wrap">
-            <img v-if="sessionQr" :src="'data:image/png;base64,' + sessionQr" class="qr-img" />
-            <button v-else class="btn btn-primary" @click="loadQr(detailSession.session.id)">Show QR Code</button>
+            <img v-if="sessionQr" :src="'data:image/png;base64,' + sessionQr" class="qr-img" alt="Session QR code" />
+            <button v-else class="btn btn-primary" @click="loadQr(activeDetailSession.id)">Show QR Code</button>
           </div>
         </div>
 
         <!-- Stats -->
         <div class="kpi-mini">
           <div class="kpi-card">
-            <div class="kpi-num">{{ detailSession.session.totalStudents }}</div>
+            <div class="kpi-num">{{ activeDetailSession.totalStudents }}</div>
             <div class="kpi-label">Students Joined</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-num">{{ detailSession.session.completedStudents }}</div>
+            <div class="kpi-num">{{ activeDetailSession.completedStudents }}</div>
             <div class="kpi-label">Completed</div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-num">{{ detailSession.session.averageScore }}</div>
+            <div class="kpi-num">{{ activeDetailSession.averageScore }}</div>
             <div class="kpi-label">Avg Score</div>
           </div>
         </div>
@@ -84,7 +85,7 @@
               </tr>
             </thead>
             <tbody>
-              <tr v-for="s in detailSession.students" :key="s.id">
+              <tr v-for="s in detailStudents" :key="s.id">
                 <td class="bold">{{ s.name }}</td>
                 <td>
                   <span class="score-tag" :class="scoreClass(s.score)">{{ s.score }}</span>
@@ -99,7 +100,7 @@
                 </td>
                 <td>{{ s.completedAt ? fmtDate(s.completedAt) : '-' }}</td>
               </tr>
-              <tr v-if="!detailSession.students.length">
+              <tr v-if="!detailStudents.length">
                 <td colspan="10" class="empty-row">No students have joined yet</td>
               </tr>
             </tbody>
@@ -156,7 +157,7 @@
           <p>Share this QR code or URL with your students.</p>
           <div class="created-info">
             <div class="qr-center">
-              <img :src="'data:image/png;base64,' + createdSession.qrCode" class="qr-img-lg" />
+              <img :src="'data:image/png;base64,' + createdSession.qrCode" class="qr-img-lg" alt="Generated session QR code" />
               <div class="qr-url">{{ createdSession.url }}</div>
               <code class="token-lg">Token: {{ createdSession.token }}</code>
             </div>
@@ -165,11 +166,42 @@
         </div>
       </div>
     </main>
+
+    <!-- Certificate Modal -->
+    <div v-if="certificateModalOpen" class="modal-backdrop" @click.self="closeCertificateModal">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3>Generate Certificate</h3>
+          <button class="modal-close" @click="closeCertificateModal">✕</button>
+        </div>
+
+        <p class="modal-text">Enter the name that should appear on the certificate.</p>
+
+        <div class="form-group">
+          <label>Name</label>
+          <input
+            v-model="certificateName"
+            type="text"
+            placeholder="e.g. John Doe"
+            @keyup.enter="downloadCertificate"
+          />
+        </div>
+
+        <div v-if="certificateError" class="error-msg">{{ certificateError }}</div>
+
+        <div class="modal-actions">
+          <button class="btn btn-secondary" @click="closeCertificateModal" :disabled="certificateLoading">Cancel</button>
+          <button class="btn btn-primary" @click="downloadCertificate" :disabled="certificateLoading">
+            {{ certificateLoading ? 'Generating...' : 'Download PDF' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../../stores/auth.js'
 import api from '../../api/index.js'
@@ -181,11 +213,18 @@ const sessions = ref([])
 const loading = ref(false)
 const detailSession = ref(null)
 const sessionQr = ref(null)
+const activeDetailSession = computed(() => detailSession.value?.session || {})
+const detailStudents = computed(() => detailSession.value?.students || [])
 
 const newSessionName = ref('')
 const creating = ref(false)
 const createError = ref('')
 const createdSession = ref(null)
+
+const certificateModalOpen = ref(false)
+const certificateName = ref('')
+const certificateLoading = ref(false)
+const certificateError = ref('')
 
 onMounted(() => loadSessions())
 
@@ -233,6 +272,53 @@ function getResponse(responses, scenarioId) {
 }
 
 function logout() { auth.logout(); router.push('/login') }
+
+function closeCertificateModal() {
+  certificateModalOpen.value = false
+  certificateName.value = ''
+  certificateError.value = ''
+  certificateLoading.value = false
+}
+
+async function downloadCertificate() {
+  const name = certificateName.value.trim()
+  if (!name) {
+    certificateError.value = 'Name is required'
+    return
+  }
+
+  certificateLoading.value = true
+  certificateError.value = ''
+
+  try {
+    const res = await api.get('/certificates/download', {
+      params: { name },
+      responseType: 'blob'
+    })
+
+    const blob = new Blob([res.data], { type: 'application/pdf' })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+
+    const disposition = res.headers?.['content-disposition'] || ''
+    const match = disposition.match(/filename="?([^";]+)"?/i)
+    const filename = match?.[1] || `certificate-${name.replace(/\s+/g, '_')}.pdf`
+
+    link.href = url
+    link.download = filename
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
+
+    closeCertificateModal()
+  } catch (e) {
+    certificateError.value = e.response?.data?.error || 'Failed to generate certificate'
+  } finally {
+    certificateLoading.value = false
+  }
+}
+
 function scoreClass(s) {
   if (s >= 80) return 'score-green'
   if (s >= 60) return 'score-yellow'
@@ -329,4 +415,63 @@ nav button.active { background: #eef2ff; color: #4f46e5; }
 
 .error-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 12px; }
 .loading { padding: 40px; text-align: center; color: #94a3b8; }
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+}
+
+.modal-card {
+  width: 100%;
+  max-width: 460px;
+  background: white;
+  border-radius: 18px;
+  padding: 20px;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.25);
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.modal-header h3 {
+  font-size: 1.1rem;
+  font-weight: 900;
+}
+
+.modal-close {
+  border: none;
+  background: #f1f5f9;
+  color: #64748b;
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.modal-close:hover { background: #e2e8f0; }
+
+.modal-text {
+  color: #64748b;
+  font-size: 0.92rem;
+  margin-bottom: 18px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
 </style>
