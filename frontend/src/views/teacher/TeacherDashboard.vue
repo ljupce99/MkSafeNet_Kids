@@ -1,0 +1,332 @@
+<template>
+  <div class="dashboard">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span>🛡️</span>
+        <span>MkSafeNet</span>
+      </div>
+      <nav>
+        <button :class="{ active: tab === 'sessions' }" @click="tab = 'sessions'; detailSession = null">📋 My Sessions</button>
+        <button :class="{ active: tab === 'new' }" @click="tab = 'new'">➕ New Session</button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-info">
+          <span class="user-avatar">👩‍🏫</span>
+          <div>
+            <div class="user-name">{{ auth.displayName }}</div>
+            <div class="user-role">{{ auth.schoolName }}</div>
+          </div>
+        </div>
+        <button class="logout-btn" @click="logout">Sign Out</button>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main-content">
+
+      <!-- Session Detail View -->
+      <div v-if="detailSession">
+        <div class="back-row">
+          <button class="btn btn-secondary btn-sm" @click="detailSession = null">← Back</button>
+          <h2 class="page-title">{{ detailSession.session.name }}</h2>
+          <div class="session-status">
+            <span class="badge" :class="detailSession.session.active ? 'badge-green' : 'badge-red'">
+              {{ detailSession.session.active ? '● Active' : '○ Inactive' }}
+            </span>
+            <button class="btn btn-sm" :class="detailSession.session.active ? 'btn-danger' : 'btn-success'"
+                    @click="toggleSession(detailSession.session.id, !detailSession.session.active)">
+              {{ detailSession.session.active ? 'Deactivate' : 'Activate' }}
+            </button>
+          </div>
+        </div>
+
+        <!-- QR Code -->
+        <div class="qr-row card">
+          <div class="qr-left">
+            <h3>Session QR Code</h3>
+            <p>Share this with students to start the challenge</p>
+            <code class="token-code">Token: {{ detailSession.session.token }}</code>
+          </div>
+          <div class="qr-img-wrap">
+            <img v-if="sessionQr" :src="'data:image/png;base64,' + sessionQr" class="qr-img" />
+            <button v-else class="btn btn-primary" @click="loadQr(detailSession.session.id)">Show QR Code</button>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="kpi-mini">
+          <div class="kpi-card">
+            <div class="kpi-num">{{ detailSession.session.totalStudents }}</div>
+            <div class="kpi-label">Students Joined</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-num">{{ detailSession.session.completedStudents }}</div>
+            <div class="kpi-label">Completed</div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-num">{{ detailSession.session.averageScore }}</div>
+            <div class="kpi-label">Avg Score</div>
+          </div>
+        </div>
+
+        <!-- Students Table -->
+        <div class="card mt-16">
+          <h3 class="section-title">Students</h3>
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Score</th>
+                <th>Status</th>
+                <th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th>
+                <th>Completed</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in detailSession.students" :key="s.id">
+                <td class="bold">{{ s.name }}</td>
+                <td>
+                  <span class="score-tag" :class="scoreClass(s.score)">{{ s.score }}</span>
+                </td>
+                <td>
+                  <span class="badge" :class="s.completed ? 'badge-green' : 'badge-yellow'">
+                    {{ s.completed ? 'Done' : 'In progress' }}
+                  </span>
+                </td>
+                <td v-for="sc in 5" :key="sc">
+                  {{ getResponse(s.responses, sc) }}
+                </td>
+                <td>{{ s.completedAt ? fmtDate(s.completedAt) : '-' }}</td>
+              </tr>
+              <tr v-if="!detailSession.students.length">
+                <td colspan="10" class="empty-row">No students have joined yet</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Sessions List -->
+      <div v-else-if="tab === 'sessions'">
+        <h2 class="page-title">My Sessions</h2>
+        <div v-if="loading" class="loading">Loading...</div>
+        <div v-else-if="!sessions.length" class="empty-state">
+          <div class="empty-icon">📋</div>
+          <p>No sessions yet. Create your first one!</p>
+          <button class="btn btn-primary" @click="tab = 'new'">Create Session</button>
+        </div>
+        <div v-else class="sessions-grid">
+          <div v-for="s in sessions" :key="s.id" class="session-card" @click="openDetail(s.id)">
+            <div class="session-card-top">
+              <h3>{{ s.name }}</h3>
+              <span class="badge" :class="s.active ? 'badge-green' : 'badge-red'">
+                {{ s.active ? '● Active' : '○ Inactive' }}
+              </span>
+            </div>
+            <div class="session-meta">
+              <span>👥 {{ s.totalStudents }} students</span>
+              <span>✅ {{ s.completedStudents }} done</span>
+              <span>⭐ Avg: {{ s.averageScore }}</span>
+            </div>
+            <div class="session-token">Token: <code>{{ s.token }}</code></div>
+            <div class="session-date">Created: {{ fmtDate(s.createdAt) }}</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- New Session Tab -->
+      <div v-else-if="tab === 'new'">
+        <h2 class="page-title">Create New Session</h2>
+        <div class="card" style="max-width: 500px">
+          <p class="create-hint">Generate a session and QR code for your class. Students scan it to begin.</p>
+          <div class="form-group">
+            <label>Session Name</label>
+            <input v-model="newSessionName" placeholder="e.g. Class 5A — April 2026" />
+          </div>
+          <div v-if="createError" class="error-msg">{{ createError }}</div>
+          <button class="btn btn-primary create-btn" @click="createSession" :disabled="creating">
+            {{ creating ? 'Creating...' : '🔗 Generate Session & QR Code' }}
+          </button>
+        </div>
+
+        <!-- Created Session Result -->
+        <div v-if="createdSession" class="card mt-24 created-result">
+          <h3>✅ Session Created!</h3>
+          <p>Share this QR code or URL with your students.</p>
+          <div class="created-info">
+            <div class="qr-center">
+              <img :src="'data:image/png;base64,' + createdSession.qrCode" class="qr-img-lg" />
+              <div class="qr-url">{{ createdSession.url }}</div>
+              <code class="token-lg">Token: {{ createdSession.token }}</code>
+            </div>
+          </div>
+          <button class="btn btn-secondary" @click="tab = 'sessions'; loadSessions()">View All Sessions</button>
+        </div>
+      </div>
+    </main>
+  </div>
+</template>
+
+<script setup>
+import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
+import { useAuthStore } from '../../stores/auth.js'
+import api from '../../api/index.js'
+
+const router = useRouter()
+const auth = useAuthStore()
+const tab = ref('sessions')
+const sessions = ref([])
+const loading = ref(false)
+const detailSession = ref(null)
+const sessionQr = ref(null)
+
+const newSessionName = ref('')
+const creating = ref(false)
+const createError = ref('')
+const createdSession = ref(null)
+
+onMounted(() => loadSessions())
+
+async function loadSessions() {
+  loading.value = true
+  try { sessions.value = (await api.get('/teacher/sessions')).data }
+  finally { loading.value = false }
+}
+
+async function openDetail(id) {
+  sessionQr.value = null
+  detailSession.value = (await api.get(`/teacher/sessions/${id}`)).data
+  tab.value = 'sessions'
+}
+
+async function loadQr(id) {
+  const res = await api.get(`/teacher/sessions/${id}/qr`)
+  sessionQr.value = res.data.qrCode
+}
+
+async function toggleSession(id, active) {
+  await api.put(`/teacher/sessions/${id}/toggle`, { active })
+  detailSession.value.session.active = active
+}
+
+async function createSession() {
+  if (!newSessionName.value.trim()) { createError.value = 'Session name required'; return }
+  creating.value = true
+  createError.value = ''
+  try {
+    const res = await api.post('/teacher/sessions', { name: newSessionName.value.trim() })
+    createdSession.value = res.data
+    newSessionName.value = ''
+  } catch (e) {
+    createError.value = e.response?.data?.error || 'Failed to create session'
+  } finally {
+    creating.value = false
+  }
+}
+
+function getResponse(responses, scenarioId) {
+  const r = responses?.find(x => x.scenarioId === scenarioId)
+  if (!r) return '-'
+  return r.correct ? '✅' : '❌'
+}
+
+function logout() { auth.logout(); router.push('/login') }
+function scoreClass(s) {
+  if (s >= 80) return 'score-green'
+  if (s >= 60) return 'score-yellow'
+  return 'score-red'
+}
+function fmtDate(d) {
+  if (!d) return '-'
+  return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+</script>
+
+<style scoped>
+.dashboard { display: flex; min-height: 100vh; background: #f0f4ff; }
+
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: white; border-right: 2px solid #e2e8f0;
+  display: flex; flex-direction: column; padding: 24px 16px;
+  position: sticky; top: 0; height: 100vh;
+}
+.sidebar-logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 900; color: #4f46e5; margin-bottom: 32px; padding: 0 8px; }
+.sidebar-logo span:first-child { font-size: 1.5rem; }
+nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+nav button { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; border: none; background: transparent; text-align: left; font-family: inherit; font-size: 0.93rem; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.2s; }
+nav button:hover { background: #f1f5f9; color: #4f46e5; }
+nav button.active { background: #eef2ff; color: #4f46e5; }
+.sidebar-footer { border-top: 1px solid #e2e8f0; padding-top: 16px; }
+.user-info { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.user-avatar { font-size: 1.8rem; }
+.user-name { font-weight: 800; font-size: 0.9rem; }
+.user-role { font-size: 0.75rem; color: #64748b; }
+.logout-btn { width: 100%; padding: 8px; border-radius: 8px; border: 2px solid #e2e8f0; background: white; font-family: inherit; font-size: 0.85rem; font-weight: 700; color: #64748b; cursor: pointer; }
+.logout-btn:hover { background: #fee2e2; border-color: #ef4444; color: #ef4444; }
+
+.main-content { flex: 1; padding: 32px; overflow-y: auto; }
+.page-title { font-size: 1.6rem; font-weight: 900; margin-bottom: 24px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.section-title { font-size: 1rem; font-weight: 800; margin-bottom: 16px; }
+
+.back-row { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.back-row .page-title { margin-bottom: 0; flex: 1; }
+.session-status { display: flex; align-items: center; gap: 10px; }
+
+.qr-row { display: flex; align-items: center; gap: 32px; margin-bottom: 16px; }
+.qr-left { flex: 1; }
+.qr-left h3 { font-size: 1rem; font-weight: 800; margin-bottom: 4px; }
+.qr-left p { color: #64748b; font-size: 0.88rem; margin-bottom: 12px; }
+.token-code { background: #f1f5f9; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; font-family: monospace; }
+.qr-img-wrap { flex-shrink: 0; }
+.qr-img { width: 140px; height: 140px; border-radius: 12px; border: 3px solid #e2e8f0; }
+
+.kpi-mini { display: flex; gap: 16px; margin-bottom: 0; }
+.kpi-card { background: white; border-radius: 14px; padding: 18px 24px; flex: 1; text-align: center; box-shadow: 0 2px 12px rgba(79,70,229,0.07); }
+.kpi-num { font-size: 1.8rem; font-weight: 900; color: #4f46e5; }
+.kpi-label { font-size: 0.8rem; color: #64748b; font-weight: 700; }
+
+.sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; }
+.session-card { background: white; border-radius: 16px; padding: 20px; cursor: pointer; border: 2px solid transparent; transition: all 0.2s; box-shadow: 0 2px 12px rgba(0,0,0,0.06); }
+.session-card:hover { border-color: #4f46e5; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(79,70,229,0.15); }
+.session-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.session-card h3 { font-size: 1rem; font-weight: 900; }
+.session-meta { display: flex; gap: 12px; flex-wrap: wrap; font-size: 0.82rem; color: #64748b; font-weight: 600; margin-bottom: 8px; }
+.session-token { font-size: 0.8rem; color: #94a3b8; margin-bottom: 4px; }
+.session-token code { background: #f8faff; padding: 2px 6px; border-radius: 4px; font-size: 0.78rem; }
+.session-date { font-size: 0.78rem; color: #cbd5e1; }
+
+.empty-state { text-align: center; padding: 64px; }
+.empty-icon { font-size: 4rem; margin-bottom: 16px; }
+.empty-state p { color: #64748b; margin-bottom: 20px; font-size: 1rem; }
+
+.create-hint { color: #64748b; font-size: 0.9rem; margin-bottom: 20px; }
+.create-btn { width: 100%; justify-content: center; padding: 14px; font-size: 1rem; border-radius: 14px; margin-top: 4px; }
+.create-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.created-result { text-align: center; }
+.created-result h3 { font-size: 1.2rem; font-weight: 900; margin-bottom: 8px; color: #059669; }
+.created-result p { color: #64748b; margin-bottom: 24px; }
+.qr-center { display: flex; flex-direction: column; align-items: center; gap: 12px; margin-bottom: 24px; }
+.qr-img-lg { width: 200px; height: 200px; border-radius: 16px; border: 3px solid #e2e8f0; }
+.qr-url { font-size: 0.82rem; color: #64748b; word-break: break-all; }
+.token-lg { background: #f1f5f9; padding: 8px 16px; border-radius: 10px; font-size: 1rem; }
+
+.data-table { width: 100%; border-collapse: collapse; }
+.data-table th { text-align: left; padding: 10px 12px; font-size: 0.8rem; color: #64748b; font-weight: 800; border-bottom: 2px solid #f1f5f9; text-transform: uppercase; letter-spacing: 0.05em; }
+.data-table td { padding: 12px; font-size: 0.88rem; border-bottom: 1px solid #f1f5f9; }
+.data-table .bold { font-weight: 700; }
+.empty-row { text-align: center; color: #94a3b8; padding: 32px !important; }
+
+.score-tag { display: inline-block; padding: 2px 10px; border-radius: 99px; font-weight: 800; font-size: 0.85rem; }
+.score-green { background: #d1fae5; color: #065f46; }
+.score-yellow { background: #fef3c7; color: #92400e; }
+.score-red { background: #fee2e2; color: #991b1b; }
+
+.error-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 12px; }
+.loading { padding: 40px; text-align: center; color: #94a3b8; }
+</style>

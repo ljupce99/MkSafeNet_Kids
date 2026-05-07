@@ -1,0 +1,6 @@
+com\mksafenet\dto\LoginResponse.class
+com\mksafenet\model\Session.class
+com\mksafenet\model\ScenarioResponse.class
+com\mksafenet\MksafenetApplication.class
+com\mksafenet\repository\ScenarioResponseRepository.class
+com\mksafenet\model\Student.class
