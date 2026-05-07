@@ -1,28 +1,162 @@
-<!doctype html>
-<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-  <meta charset="utf-8"/>
-  <title>Certificate</title>
-  <style>
-    body { font-family: 'DejaVu Sans', Arial, sans-serif; margin:0; padding:0; }
-    .page { width:210mm; height:297mm; padding:40mm 20mm; box-sizing:border-box }
-    .certificate { border:4px solid #2c3e50; padding:30px; text-align:center }
-    .title { font-size:28px; font-weight:bold; margin-bottom:20px }
-    .name { font-size:42px; font-weight:bold; color:#2c3e50; margin:30px 0 }
-    .body { font-size:18px; margin-top:20px }
-    .footer { margin-top:60px; font-size:14px; color:#666 }
+  <meta charset="UTF-8"/>
+  <title>Certificate of Completion</title>
+  <style type="text/css">
+    @page {
+      size: 297mm 210mm;
+      margin: 0;
+    }
+    body, html {
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      color: #001f3f;
+      font-family: 'DejaVu Sans', Georgia, serif;
+      font-size: 18px;
+      text-align: center;
+    }
+    .page {
+      width: 297mm;
+      height: 210mm;
+      display: table;
+      background: #fdfaf3;
+    }
+    .container {
+      border: 16px solid #001f3f;
+      display: table-cell;
+      vertical-align: middle;
+      padding: 20mm 22mm;
+    }
+    .inner {
+      border: 1px solid #c9a227;
+      padding: 14mm 14mm;
+    }
+    .logo {
+      margin-bottom: 6mm;
+    }
+    .logo img {
+      height: 28mm;
+      width: auto;
+    }
+    .marquee {
+      color: #001f3f;
+      font-size: 48px;
+      font-weight: bold;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      margin: 2mm 0 1mm 0;
+    }
+    .submarquee {
+      color: #c9a227;
+      font-size: 16px;
+      letter-spacing: 6px;
+      text-transform: uppercase;
+      margin-bottom: 8mm;
+    }
+    .assignment {
+      margin: 3mm 0;
+      font-size: 13px;
+      color: #555;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .person {
+      border-bottom: 2px solid #c9a227;
+      font-size: 36px;
+      font-weight: bold;
+      color: #001f3f;
+      margin: 6mm auto 4mm auto;
+      width: 70%;
+      padding-bottom: 3mm;
+    }
+    .reason {
+      margin: 4mm 12mm 8mm 12mm;
+      font-size: 14px;
+      color: #444;
+      line-height: 1.6;
+    }
+    .footer {
+      width: 100%;
+      margin-top: 6mm;
+      border-collapse: collapse;
+    }
+    .footer td {
+      width: 33%;
+      text-align: center;
+      vertical-align: middle;
+      padding: 0 8mm;
+    }
+    .sig-line {
+      border-top: 1px solid #001f3f;
+      padding-top: 2mm;
+    }
+    .sig-name {
+      font-weight: bold;
+      font-size: 13px;
+      color: #001f3f;
+    }
+    .sig-role {
+      font-size: 10px;
+      color: #777;
+      letter-spacing: 2px;
+    }
   </style>
 </head>
 <body>
-  <div class="page">
-    <div class="certificate">
-      <div class="title">Certificate of Completion</div>
-      <div class="body">This certifies that</div>
-      <div class="name" th:text="${name}">[NAME]</div>
-      <div class="body">has successfully completed the course.</div>
-      <div class="footer">Issued by Mksafenet</div>
+<div class="page">
+  <div class="container">
+    <div class="inner">
+
+      <!-- Mksafenet Logo: place file at src/main/resources/templates/logo.png -->
+      <div class="logo">
+        <img src="logo.png" alt="MKSafeNet"/>
+      </div>
+
+      <div class="marquee">Certificate</div>
+      <div class="submarquee">of Completion</div>
+
+      <div class="assignment">This certificate is proudly presented to</div>
+
+      <div class="person" th:text="${name}">[NAME]</div>
+
+      <div class="reason">
+        For successfully completing the program requirements and demonstrating<br/>
+        outstanding commitment, knowledge, and professional excellence.
+      </div>
+
+      <table class="footer">
+        <tr>
+          <td>
+            <div class="sig-line">
+              <div class="sig-name">MKSafeNet</div>
+              <div class="sig-role">DIRECTOR</div>
+            </div>
+          </td>
+          <td>
+            <!-- Compact seal -->
+            <svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="60" cy="60" r="55" fill="none" stroke="#c9a227" stroke-width="2"/>
+              <circle cx="60" cy="60" r="48" fill="none" stroke="#c9a227" stroke-width="1"/>
+              <circle cx="60" cy="60" r="35" fill="#001f3f"/>
+              <polygon points="60,42 64,55 78,55 67,63 71,76 60,68 49,76 53,63 42,55 56,55"
+                       fill="#c9a227"/>
+            </svg>
+          </td>
+          <td>
+            <div class="sig-line">
+              <div class="sig-name"
+                   th:text="${#dates.format(#dates.createNow(), 'dd.MM.yyyy')}">01.01.2026</div>
+              <div class="sig-role">DATE OF ISSUE</div>
+            </div>
+          </td>
+        </tr>
+      </table>
+
     </div>
   </div>
+</div>
 </body>
 </html>
-
