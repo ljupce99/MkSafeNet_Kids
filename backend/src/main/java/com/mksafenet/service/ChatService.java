@@ -194,6 +194,7 @@ public class ChatService {
 
     private List<ChatMessageDto> buildFinalMessages(String name, int score, boolean passed, String grade) {
         List<ChatMessageDto> msgs = new ArrayList<>();
+        //TODO : base with meseges and ?
         if (passed) {
             msgs.add(msg("success", "🎉 Amazing work, " + name + "! You completed the Phishing Challenge!", 0));
             msgs.add(msg("success", "You scored " + score + "/100 — Grade: " + grade, 1500));

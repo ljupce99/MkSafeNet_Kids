@@ -28,18 +28,16 @@ public class ScenarioService {
 
     public List<ChatMessageDto> getIntroMessages(String studentName) {
         return List.of(
-            msg("bot", "👋 Hey " + studentName + "! I'm SafeBot — your internet safety guide!", 0),
-            msg("bot", "Today we're going to learn about something called PHISHING. 🎣", 1200),
-            msg("bot", "No, not fishing with a rod! Phishing is when BAD PEOPLE try to TRICK you online...", 2600),
-            msg("bot", "They pretend to be someone you trust — like your bank, a game company, or even a friend!", 4200),
-            msg("bot", "Their goal? To steal your passwords, your money, or your private info. 😈", 5800),
-            msg("bot", "But don't worry — after today, you'll be able to SPOT them and STOP them! 🦸", 7400),
-            msg("bot", "I'm going to show you 5 real-life situations. You'll decide what to do.", 9000),
-            msg("bot", "If you make a wrong choice, I'll show you what COULD really happen. It might be scary — but that's how we learn! 💪", 10600),
-            msg("bot", "Ready? Let's start with Scenario 1... 🚀", 12200)
+                msg("bot", "👋 Здраво " + studentName + "! Јас сум SafeBot — твој водич за интернет безбедност!", 0),
+                msg("bot", "Денес ќе учиме за PHISHING 🎣 — кога лоши луѓе се обидуваат да те измамат онлајн.", 1200),
+                msg("bot", "Тие се преправаат дека се некој на кој му веруваш (банка, игра или пријател) и сакаат да ти ги украдат лозинките или податоците 😈", 2600),
+                msg("bot", "Но не се грижи — ќе научиш како да ги препознаеш и да се заштитиш 🦸‍♂️", 4200),
+                msg("bot", "Ќе ти покажам неколку ситуации, а ти ќе одлучуваш што е правилно. Некои грешки ќе покажат што може да се случи.", 5600),
+                msg("bot", "Ајде да почнеме со Сценарио 1 🚀", 7000)
         );
     }
-
+    //TODO : Add Tabel of Contents for scenarios
+    // and rendom get scenarios for each student
     public Scenario getScenario(int id) {
         return switch (id) {
             case 1 -> scenario1();
