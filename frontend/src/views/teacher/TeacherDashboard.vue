@@ -3,13 +3,12 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span>🛡️</span>
-        <span>MkSafeNet</span>
+        <img src="../../assets/logo.png" alt="MkSafeNet Logo" class="sidebar-logo-img" />
       </div>
       <nav>
-        <button :class="{ active: tab === 'sessions' }" @click="tab = 'sessions'; detailSession = null">📋 My Sessions</button>
-        <button @click="certificateModalOpen = true">🎓 Generate Certificate</button>
-        <button :class="{ active: tab === 'new' }" @click="tab = 'new'">➕ New Session</button>
+        <button :class="{ active: tab === 'sessions' }" @click="tab = 'sessions'; detailSession = null">📋 Мои сесии</button>
+        <button @click="certificateModalOpen = true">🎓 Создади сертификат</button>
+        <button :class="{ active: tab === 'new' }" @click="tab = 'new'">➕ Нова сесија</button>
       </nav>
       <div class="sidebar-footer">
         <div class="user-info">
@@ -19,7 +18,7 @@
             <div class="user-role">{{ auth.schoolName }}</div>
           </div>
         </div>
-        <button class="logout-btn" @click="logout">Sign Out</button>
+        <button class="logout-btn" @click="logout">Одјави се</button>
       </div>
     </aside>
 
@@ -29,15 +28,15 @@
       <!-- Session Detail View -->
       <div v-if="detailSession">
         <div class="back-row">
-          <button class="btn btn-secondary btn-sm" @click="detailSession = null">← Back</button>
+          <button class="btn btn-secondary btn-sm" @click="detailSession = null">← назад</button>
           <h2 class="page-title">{{ activeDetailSession.name }}</h2>
           <div class="session-status">
             <span class="badge" :class="activeDetailSession.active ? 'badge-green' : 'badge-red'">
-              {{ activeDetailSession.active ? '● Active' : '○ Inactive' }}
+              {{ activeDetailSession.active ? '● активно' : '○ неактивно' }}
             </span>
             <button class="btn btn-sm" :class="activeDetailSession.active ? 'btn-danger' : 'btn-success'"
                     @click="toggleSession(activeDetailSession.id, !activeDetailSession.active)">
-              {{ activeDetailSession.active ? 'Deactivate' : 'Activate' }}
+              {{ activeDetailSession.active ? 'деактивирај' : 'активирај' }}
             </button>
           </div>
         </div>
@@ -45,13 +44,16 @@
         <!-- QR Code -->
         <div class="qr-row card">
           <div class="qr-left">
-            <h3>Session QR Code</h3>
-            <p>Share this with students to start the challenge</p>
+            <h3>QR Code за сесија</h3>
+            <p>Сподели со учениците за да започне вежбата!</p>
             <code class="token-code">Token: {{ activeDetailSession.token }}</code>
           </div>
           <div class="qr-img-wrap">
             <img v-if="sessionQr" :src="'data:image/png;base64,' + sessionQr" class="qr-img" alt="Session QR code" />
-            <button v-else class="btn btn-primary" @click="loadQr(activeDetailSession.id)">Show QR Code</button>
+            <button v-else class="btn btn-primary" @click="loadQr(activeDetailSession.id)">Прикажи QR код</button>
+            <div v-if="sessionQr" class="qr-link-wrap">
+              <div class="qr-url">{{ getSessionUrl(activeDetailSession.token) }}</div>
+            </div>
           </div>
         </div>
 
@@ -59,29 +61,29 @@
         <div class="kpi-mini">
           <div class="kpi-card">
             <div class="kpi-num">{{ activeDetailSession.totalStudents }}</div>
-            <div class="kpi-label">Students Joined</div>
+            <div class="kpi-label">Вклучени ученици</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-num">{{ activeDetailSession.completedStudents }}</div>
-            <div class="kpi-label">Completed</div>
+            <div class="kpi-label">Завршени</div>
           </div>
           <div class="kpi-card">
             <div class="kpi-num">{{ activeDetailSession.averageScore }}</div>
-            <div class="kpi-label">Avg Score</div>
+            <div class="kpi-label">Средна оценка</div>
           </div>
         </div>
 
         <!-- Students Table -->
         <div class="card mt-16">
-          <h3 class="section-title">Students</h3>
+          <h3 class="section-title">Ученици</h3>
           <table class="data-table">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Score</th>
-                <th>Status</th>
-                <th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th>
-                <th>Completed</th>
+                <th>Име</th>
+                <th>Поени</th>
+                <th>Статус</th>
+                <th>С1</th><th>С2</th><th>С3</th><th>С4</th><th>С5</th>
+                <th>Завршено на</th>
               </tr>
             </thead>
             <tbody>
@@ -92,7 +94,7 @@
                 </td>
                 <td>
                   <span class="badge" :class="s.completed ? 'badge-green' : 'badge-yellow'">
-                    {{ s.completed ? 'Done' : 'In progress' }}
+                    {{ s.completed ? 'Завршено' : 'Во процес' }}
                   </span>
                 </td>
                 <td v-for="sc in 5" :key="sc">
@@ -101,7 +103,7 @@
                 <td>{{ s.completedAt ? fmtDate(s.completedAt) : '-' }}</td>
               </tr>
               <tr v-if="!detailStudents.length">
-                <td colspan="10" class="empty-row">No students have joined yet</td>
+                <td colspan="10" class="empty-row">Нема вклучени ученици</td>
               </tr>
             </tbody>
           </table>
@@ -110,59 +112,59 @@
 
       <!-- Sessions List -->
       <div v-else-if="tab === 'sessions'">
-        <h2 class="page-title">My Sessions</h2>
-        <div v-if="loading" class="loading">Loading...</div>
+        <h2 class="page-title">Мои сесии</h2>
+        <div v-if="loading" class="loading">Се вчитува...</div>
         <div v-else-if="!sessions.length" class="empty-state">
           <div class="empty-icon">📋</div>
-          <p>No sessions yet. Create your first one!</p>
-          <button class="btn btn-primary" @click="tab = 'new'">Create Session</button>
+          <p>Нема сеции, направи една!</p>
+          <button class="btn btn-primary" @click="tab = 'new'">Додади сесија</button>
         </div>
         <div v-else class="sessions-grid">
           <div v-for="s in sessions" :key="s.id" class="session-card" @click="openDetail(s.id)">
             <div class="session-card-top">
               <h3>{{ s.name }}</h3>
               <span class="badge" :class="s.active ? 'badge-green' : 'badge-red'">
-                {{ s.active ? '● Active' : '○ Inactive' }}
+                {{ s.active ? '● Активно' : '○ Неактивно' }}
               </span>
             </div>
             <div class="session-meta">
-              <span>👥 {{ s.totalStudents }} students</span>
-              <span>✅ {{ s.completedStudents }} done</span>
-              <span>⭐ Avg: {{ s.averageScore }}</span>
+              <span>👥 {{ s.totalStudents }} ученици</span>
+              <span>✅ {{ s.completedStudents }} завршено</span>
+              <span>⭐ просек: {{ s.averageScore }}</span>
             </div>
-            <div class="session-token">Token: <code>{{ s.token }}</code></div>
-            <div class="session-date">Created: {{ fmtDate(s.createdAt) }}</div>
+            <div class="session-token">Токен: <code>{{ s.token }}</code></div>
+            <div class="session-date">Направено на: {{ fmtDate(s.createdAt) }}</div>
           </div>
         </div>
       </div>
 
       <!-- New Session Tab -->
       <div v-else-if="tab === 'new'">
-        <h2 class="page-title">Create New Session</h2>
+        <h2 class="page-title">Додади нова сесија</h2>
         <div class="card" style="max-width: 500px">
-          <p class="create-hint">Generate a session and QR code for your class. Students scan it to begin.</p>
+          <p class="create-hint">Додади сесија и QR code за твоето одделение. Учениците скенираат и започнуваат со вежбата</p>
           <div class="form-group">
-            <label>Session Name</label>
-            <input v-model="newSessionName" placeholder="e.g. Class 5A — April 2026" />
+            <label>Име на сесија</label>
+            <input v-model="newSessionName" placeholder="e.g. клас/одделение 5A — April 2026" />
           </div>
           <div v-if="createError" class="error-msg">{{ createError }}</div>
           <button class="btn btn-primary create-btn" @click="createSession" :disabled="creating">
-            {{ creating ? 'Creating...' : '🔗 Generate Session & QR Code' }}
+            {{ creating ? 'Се создава...' : '🔗 Додади сесија и QR код' }}
           </button>
         </div>
 
         <!-- Created Session Result -->
         <div v-if="createdSession" class="card mt-24 created-result">
-          <h3>✅ Session Created!</h3>
-          <p>Share this QR code or URL with your students.</p>
+          <h3>✅ Сесијата е направена!</h3>
+          <p>Сподели QR код или URL со твоите ученици.</p>
           <div class="created-info">
             <div class="qr-center">
-              <img :src="'data:image/png;base64,' + createdSession.qrCode" class="qr-img-lg" alt="Generated session QR code" />
+              <img :src="'data:image/png;base64,' + createdSession.qrCode" class="qr-img-lg" alt="Создаден QR код за сесија" />
               <div class="qr-url">{{ createdSession.url }}</div>
-              <code class="token-lg">Token: {{ createdSession.token }}</code>
+              <code class="token-lg">Токен: {{ createdSession.token }}</code>
             </div>
           </div>
-          <button class="btn btn-secondary" @click="tab = 'sessions'; loadSessions()">View All Sessions</button>
+          <button class="btn btn-secondary" @click="tab = 'sessions'; loadSessions()">Види ги сите сесии</button>
         </div>
       </div>
     </main>
@@ -171,18 +173,18 @@
     <div v-if="certificateModalOpen" class="modal-backdrop" @click.self="closeCertificateModal">
       <div class="modal-card">
         <div class="modal-header">
-          <h3>Generate Certificate</h3>
+          <h3>Генерирај сертификати</h3>
           <button class="modal-close" @click="closeCertificateModal">✕</button>
         </div>
 
-        <p class="modal-text">Enter the name that should appear on the certificate.</p>
+        <p class="modal-text">Внеси го името што треба да биде на сертификатот.</p>
 
         <div class="form-group">
-          <label>Name</label>
+          <label>Име</label>
           <input
             v-model="certificateName"
             type="text"
-            placeholder="e.g. John Doe"
+            placeholder="пример: Петар Петровски"
             @keyup.enter="downloadCertificate"
           />
         </div>
@@ -190,9 +192,9 @@
         <div v-if="certificateError" class="error-msg">{{ certificateError }}</div>
 
         <div class="modal-actions">
-          <button class="btn btn-secondary" @click="closeCertificateModal" :disabled="certificateLoading">Cancel</button>
+          <button class="btn btn-secondary" @click="closeCertificateModal" :disabled="certificateLoading">Откажи</button>
           <button class="btn btn-primary" @click="downloadCertificate" :disabled="certificateLoading">
-            {{ certificateLoading ? 'Generating...' : 'Download PDF' }}
+            {{ certificateLoading ? 'Се генерира...' : 'Download PDF' }}
           </button>
         </div>
       </div>
@@ -251,7 +253,7 @@ async function toggleSession(id, active) {
 }
 
 async function createSession() {
-  if (!newSessionName.value.trim()) { createError.value = 'Session name required'; return }
+  if (!newSessionName.value.trim()) { createError.value = 'Име на сесија е задолжително!'; return }
   creating.value = true
   createError.value = ''
   try {
@@ -259,7 +261,7 @@ async function createSession() {
     createdSession.value = res.data
     newSessionName.value = ''
   } catch (e) {
-    createError.value = e.response?.data?.error || 'Failed to create session'
+    createError.value = e.response?.data?.error || 'Неуспешно создавање на сесија'
   } finally {
     creating.value = false
   }
@@ -283,7 +285,7 @@ function closeCertificateModal() {
 async function downloadCertificate() {
   const name = certificateName.value.trim()
   if (!name) {
-    certificateError.value = 'Name is required'
+    certificateError.value = 'Името е задолжително'
     return
   }
 
@@ -313,7 +315,7 @@ async function downloadCertificate() {
 
     closeCertificateModal()
   } catch (e) {
-    certificateError.value = e.response?.data?.error || 'Failed to generate certificate'
+    certificateError.value = e.response?.data?.error || 'Неуспешно создавање сертификат'
   } finally {
     certificateLoading.value = false
   }
@@ -328,6 +330,10 @@ function fmtDate(d) {
   if (!d) return '-'
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
 }
+function getSessionUrl(token) {
+  const baseUrl = window.location.origin
+  return `${baseUrl}/chat?token=${token}`
+}
 </script>
 
 <style scoped>
@@ -339,8 +345,8 @@ function fmtDate(d) {
   display: flex; flex-direction: column; padding: 24px 16px;
   position: sticky; top: 0; height: 100vh;
 }
-.sidebar-logo { display: flex; align-items: center; gap: 10px; font-size: 1.25rem; font-weight: 900; color: #4f46e5; margin-bottom: 32px; padding: 0 8px; }
-.sidebar-logo span:first-child { font-size: 1.5rem; }
+.sidebar-logo { display: flex; align-items: center; justify-content: center; margin-bottom: 32px; padding: 0 8px; }
+.sidebar-logo-img { width: 180px; height: 80px; object-fit: contain; }
 nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 nav button { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; border: none; background: transparent; text-align: left; font-family: inherit; font-size: 0.93rem; font-weight: 700; color: #64748b; cursor: pointer; transition: all 0.2s; }
 nav button:hover { background: #f1f5f9; color: #4f46e5; }
@@ -368,8 +374,10 @@ nav button.active { background: #eef2ff; color: #4f46e5; }
 .qr-left h3 { font-size: 1rem; font-weight: 800; margin-bottom: 4px; }
 .qr-left p { color: #64748b; font-size: 0.88rem; margin-bottom: 12px; }
 .token-code { background: #f1f5f9; padding: 6px 12px; border-radius: 8px; font-size: 0.85rem; font-family: monospace; }
-.qr-img-wrap { flex-shrink: 0; }
+.qr-img-wrap { flex-shrink: 0; display: flex; flex-direction: column; align-items: center; }
 .qr-img { width: 140px; height: 140px; border-radius: 12px; border: 3px solid #e2e8f0; }
+.qr-link-wrap { margin-top: 12px; text-align: center; }
+.qr-url { font-size: 0.82rem; color: #64748b; word-break: break-all; background: #f1f5f9; padding: 8px 12px; border-radius: 8px; font-family: monospace; }
 
 .kpi-mini { display: flex; gap: 16px; margin-bottom: 0; }
 .kpi-card { background: white; border-radius: 14px; padding: 18px 24px; flex: 1; text-align: center; box-shadow: 0 2px 12px rgba(79,70,229,0.07); }
