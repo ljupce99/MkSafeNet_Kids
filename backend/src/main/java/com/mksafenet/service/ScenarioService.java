@@ -4,6 +4,7 @@ import com.mksafenet.dto.ChatMessageDto;
 import com.mksafenet.model.Scenario;
 import com.mksafenet.repository.ScenarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
 
@@ -14,8 +15,6 @@ public class ScenarioService {
     public ScenarioService(ScenarioRepository scenarioRepository) {
         this.scenarioRepository = scenarioRepository;
     }
-
-    public record ScenarioOption(String key, String text) {}
 
 //    public record Scenario(
 //        int id,
@@ -33,6 +32,56 @@ public class ScenarioService {
 
     public static final int TOTAL_SCENARIOS = 5;
 
+    public List<Scenario> getAllScenarios() {
+        return scenarioRepository.findAll();
+    }
+
+    public Scenario getScenarioById(Long id) {
+        return scenarioRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Scenario not found: " + id));
+    }
+
+    @Transactional
+    public Scenario createScenario(Scenario scenario) {
+        if (scenario == null) {
+            throw new IllegalArgumentException("Scenario cannot be null");
+        }
+
+        scenario.setId(null);
+        return scenarioRepository.save(scenario);
+    }
+
+    @Transactional
+    public Scenario updateScenario(Long id, Scenario scenario) {
+        if (scenario == null) {
+            throw new IllegalArgumentException("Scenario cannot be null");
+        }
+
+        Scenario existing = getScenarioById(id);
+        existing.setTitle(scenario.getTitle());
+        existing.setSetupMessages(scenario.getSetupMessages());
+        existing.setQuestion(scenario.getQuestion());
+        existing.setOptions(scenario.getOptions());
+        existing.setCorrectAnswers(scenario.getCorrectAnswers());
+        existing.setCorrectExplanation(scenario.getCorrectExplanation());
+        existing.setWrongExplanation(scenario.getWrongExplanation());
+        existing.setConsequenceType(scenario.getConsequenceType());
+        existing.setConsequenceMessages(scenario.getConsequenceMessages());
+        existing.setPoints(scenario.getPoints());
+        existing.setTypeOfScenario(scenario.getTypeOfScenario());
+
+        return scenarioRepository.save(existing);
+    }
+
+    @Transactional
+    public void deleteScenario(Long id) {
+        if (!scenarioRepository.existsById(id)) {
+            throw new IllegalArgumentException("Scenario not found: " + id);
+        }
+
+        scenarioRepository.deleteById(id);
+    }
+
     public List<ChatMessageDto> getIntroMessages(String studentName) {
         return List.of(
                 msg("bot", "👋 Здраво " + studentName + "! Јас сум SafeBot — твој водич за интернет безбедност!", 0),
@@ -46,14 +95,12 @@ public class ScenarioService {
     //TODO : Add Tabel of Contents for scenarios
     // and rendom get scenarios for each student
     public Scenario getScenario(int scenarioType) {
-        List<Scenario> scenarioList = scenarioRepository.findAll();
-        List<Scenario> scenarioListWithType = scenarioList.stream()
-            .filter(s -> s.getTypeOfScenario() == scenarioType)
-            .toList();
+        List<Scenario> scenarioListWithType = scenarioRepository.findByTypeOfScenario(scenarioType);
+        if (scenarioListWithType.isEmpty()) {
+            throw new IllegalArgumentException("No scenarios found for type: " + scenarioType);
+        }
 
-        Scenario scenarioReturned = scenarioListWithType.get(new Random().nextInt(scenarioListWithType.size()));
-
-        return scenarioReturned;
+        return scenarioListWithType.get(new Random().nextInt(scenarioListWithType.size()));
     }
 
 //    private Scenario scenario1() {
@@ -237,11 +284,11 @@ public class ScenarioService {
                     default -> "Само така продолжи! 💪";
                 };
                 return List.of(
-                        msg("success", encouragement + " Преминуваме на следниот предизвик...", 0)
+                        msg("success", encouragement + " " + studentName + ", преминуваме на следниот предизвик...", 0)
                 );
             } else {
                 return List.of(
-                        msg("bot", "Сега знаеш на што да внимаваш. Ајде да продолжиме — следен предизвик!", 0)
+                        msg("bot", studentName + ", сега знаеш на што да внимаваш. Ајде да продолжиме — следен предизвик!", 0)
                 );
             }
         }
@@ -277,4 +324,8 @@ public class ScenarioService {
     private ChatMessageDto msg(String type, String text, int delayMs) {
         return ChatMessageDto.builder().type(type).text(text).delayMs(delayMs).build();
     }
+
+
+
+
 }
