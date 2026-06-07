@@ -47,21 +47,21 @@ public class ChatService {
         studentRepository.save(student);
 
         List<ChatMessageDto> introMessages = scenarioService.getIntroMessages(student.getName());
-        ScenarioService.Scenario firstScenario = scenarioService.getScenario(1);
+        Scenario firstScenario = scenarioService.getScenario(1);
 
         student.setCurrentScenario(1);
         studentRepository.save(student);
 
         List<ChatMessageDto> allMessages = new ArrayList<>(introMessages);
-        allMessages.addAll(firstScenario.setupMessages());
+        allMessages.addAll(firstScenario.getSetupMessages());
 
         return ChatResponseDto.builder()
             .studentId(student.getId())
             .phase("SCENARIO")
             .messages(allMessages)
             .scenarioId(1)
-            .question(firstScenario.question())
-            .options(toOptionMaps(firstScenario.options()))
+            .question(firstScenario.getQuestion())
+            .options(toOptionMaps(firstScenario.getOptions()))
             .build();
     }
 
@@ -75,10 +75,10 @@ public class ChatService {
         }
 
         int scenarioId = student.getCurrentScenario();
-        ScenarioService.Scenario scenario = scenarioService.getScenario(scenarioId);
+        Scenario scenario = scenarioService.getScenario(scenarioId);
         String answer = request.getAnswer().toUpperCase().trim();
-        boolean correct = scenario.correctAnswers().contains(answer);
-        int pointsEarned = correct ? scenario.points() : 0;
+        boolean correct = scenario.getCorrectAnswers().contains(answer);
+        int pointsEarned = correct ? scenario.getPoints() : 0;
 
         ScenarioResponse scenarioResponse = ScenarioResponse.builder()
             .student(student)
@@ -109,32 +109,32 @@ public class ChatService {
     }
 
     private ChatResponseDto buildNextScenarioResponse(Student student, boolean correct,
-            ScenarioService.Scenario scenario, String answer, int nextScenarioId) {
+            Scenario scenario, String answer, int nextScenarioId) {
 
-        ScenarioService.Scenario nextScenario = scenarioService.getScenario(nextScenarioId);
+        Scenario nextScenario = scenarioService.getScenario(nextScenarioId);
         List<ChatMessageDto> messages = new ArrayList<>();
 
         if (!correct) {
-            List<ChatMessageDto> transition = scenarioService.getTransitionMessages(scenario.id(), false, student.getName());
+            List<ChatMessageDto> transition = scenarioService.getTransitionMessages(scenario.getTypeOfScenario(), false, student.getName());
             messages.addAll(transition);
-            messages.addAll(nextScenario.setupMessages());
+            messages.addAll(nextScenario.getSetupMessages());
 
             return ChatResponseDto.builder()
                 .studentId(student.getId())
                 .phase("CONSEQUENCE")
                 .correct(false)
-                .consequenceType(scenario.consequenceType())
-                .consequenceMessages(scenario.consequenceMessages())
+                .consequenceType(scenario.getConsequenceType())
+                .consequenceMessages(scenario.getConsequenceMessages())
                 .messages(messages)
                 .scenarioId(nextScenarioId)
-                .question(nextScenario.question())
-                .options(toOptionMaps(nextScenario.options()))
+                .question(nextScenario.getQuestion())
+                .options(toOptionMaps(nextScenario.getOptions()))
                 .score(student.getScore())
                 .build();
         }
 
-        messages.addAll(scenarioService.getTransitionMessages(scenario.id(), true, student.getName()));
-        messages.addAll(nextScenario.setupMessages());
+        messages.addAll(scenarioService.getTransitionMessages(scenario.getTypeOfScenario(), true, student.getName()));
+        messages.addAll(nextScenario.getSetupMessages());
 
         return ChatResponseDto.builder()
             .studentId(student.getId())
@@ -142,14 +142,14 @@ public class ChatService {
             .correct(true)
             .messages(messages)
             .scenarioId(nextScenarioId)
-            .question(nextScenario.question())
-            .options(toOptionMaps(nextScenario.options()))
+            .question(nextScenario.getQuestion())
+            .options(toOptionMaps(nextScenario.getOptions()))
             .score(student.getScore())
             .build();
     }
 
     private ChatResponseDto buildCompleteResponse(Student student, boolean lastCorrect,
-            ScenarioService.Scenario lastScenario, String answer) {
+            Scenario lastScenario, String answer) {
 
         List<ScenarioResponse> allResponses = scenarioResponseRepository.findByStudentId(student.getId());
         int correctCount = (int) allResponses.stream().filter(ScenarioResponse::isCorrect).count();
@@ -160,14 +160,14 @@ public class ChatService {
 
         List<ChatMessageDto> messages = new ArrayList<>();
         if (!lastCorrect) {
-            messages.addAll(lastScenario.consequenceMessages());
+            messages.addAll(lastScenario.getConsequenceMessages());
         }
         messages.addAll(buildFinalMessages(student.getName(), score, passed, grade));
 
         List<ScenarioResultDto> results = allResponses.stream()
             .map(r -> ScenarioResultDto.builder()
                 .scenarioId(r.getScenarioId())
-                .scenarioTitle(scenarioService.getScenario(r.getScenarioId()).title())
+                .scenarioTitle(scenarioService.getScenario(r.getScenarioId()).getTitle())
                 .selectedAnswer(r.getSelectedAnswer())
                 .correct(r.isCorrect())
                 .pointsEarned(r.getPointsEarned())
@@ -179,8 +179,8 @@ public class ChatService {
             .studentId(student.getId())
             .phase("COMPLETE")
             .correct(lastCorrect)
-            .consequenceType(lastCorrect ? null : lastScenario.consequenceType())
-            .consequenceMessages(lastCorrect ? null : lastScenario.consequenceMessages())
+            .consequenceType(lastCorrect ? null : lastScenario.getConsequenceType())
+            .consequenceMessages(lastCorrect ? null : lastScenario.getConsequenceMessages())
             .messages(messages)
             .score(score)
             .grade(grade)
@@ -196,21 +196,21 @@ public class ChatService {
         List<ChatMessageDto> msgs = new ArrayList<>();
         //TODO : base with meseges and ?
         if (passed) {
-            msgs.add(msg("success", "🎉 Amazing work, " + name + "! You completed the Phishing Challenge!", 0));
-            msgs.add(msg("success", "You scored " + score + "/100 — Grade: " + grade, 1500));
-            msgs.add(msg("bot", "You are now a certified Phishing Spotter! 🛡️", 3000));
-            msgs.add(msg("bot", "Remember the golden rules: Never click suspicious links, never share passwords, and always ask a trusted adult when unsure!", 4500));
+            msgs.add(msg("success", "🎉 Одлична работа, " + name + "! Го заврши Предизвикот за фишинг!", 0));
+            msgs.add(msg("success", "Освои " + score + "/100 — Оценка: " + grade, 1500));
+            msgs.add(msg("bot", "Сега си сертифициран Препознавач на фишинг! 🛡️", 3000));
+            msgs.add(msg("bot", "Запомни ги златните правила: Никогаш не кликнувај на сомнителни линкови, никогаш не споделувај лозинки и секогаш прашувај доверлив возрасен кога не си сигурен!", 4500));
         } else {
-            msgs.add(msg("bot", "You completed the challenge, " + name + "! You scored " + score + "/100 — Grade: " + grade, 0));
-            msgs.add(msg("bot", "It's okay — that's why we practice! The most important thing is that you now KNOW what phishing looks like.", 1800));
-            msgs.add(msg("bot", "Remember: When in doubt, don't click — ask a trusted adult! 🛡️", 3400));
+            msgs.add(msg("bot", "Го заврши предизвикот, " + name + "! Освои " + score + "/100 — Оценка: " + grade, 0));
+            msgs.add(msg("bot", "Во ред е — затоа и вежбаме! Најважно е што сега ЗНАЕШ како изгледа фишингот.", 1800));
+            msgs.add(msg("bot", "Запомни: Кога се сомневаш, не кликнувај — прашај доверлив возрасен! 🛡️", 3400));
         }
         return msgs;
     }
 
-    private List<Map<String, String>> toOptionMaps(List<ScenarioService.ScenarioOption> options) {
+    private List<Map<String, String>> toOptionMaps(List<ScenarioOptionDto> options) {
         return options.stream()
-            .map(o -> Map.of("key", o.key(), "text", o.text()))
+            .map(o -> Map.of("key", o.getKey(), "text", o.getText()))
             .toList();
     }
 

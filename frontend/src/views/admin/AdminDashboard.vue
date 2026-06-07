@@ -10,6 +10,7 @@
         <button :class="{ active: tab === 'stats' }" @click="tab = 'stats'">📊 Statistics</button>
         <button :class="{ active: tab === 'schools' }" @click="tab = 'schools'">🏫 Schools</button>
         <button :class="{ active: tab === 'teachers' }" @click="tab = 'teachers'">👩‍🏫 Teachers</button>
+        <button :class="{ active: tab === 'scenarios' }" @click="tab = 'scenarios'">🎮 Scenarios</button>
       </nav>
       <div class="sidebar-footer">
         <div class="user-info">
@@ -200,31 +201,83 @@
           </table>
         </div>
 
-        <!-- Add Teacher Modal -->
-        <div v-if="showAddTeacher" class="modal-overlay" @click.self="showAddTeacher = false">
-          <div class="modal-box small-modal">
-            <div class="modal-header">
-              <h3>Add Teacher</h3>
-              <button class="close-btn" @click="showAddTeacher = false">✕</button>
-            </div>
-            <div class="modal-body">
-              <div class="form-group"><label>Full Name *</label><input v-model="newTeacher.displayName" /></div>
-              <div class="form-group"><label>Username *</label><input v-model="newTeacher.username" /></div>
-              <div class="form-group"><label>Password *</label><input v-model="newTeacher.password" type="password" /></div>
-              <div class="form-group">
-                <label>School *</label>
-                <select v-model="newTeacher.schoolId">
-                  <option value="">Select school...</option>
-                  <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
-                </select>
+       <!-- Add Teacher Modal -->
+         <div v-if="showAddTeacher" class="modal-overlay" @click.self="showAddTeacher = false">
+           <div class="modal-box small-modal">
+             <div class="modal-header">
+               <h3>Add Teacher</h3>
+               <button class="close-btn" @click="showAddTeacher = false">✕</button>
+             </div>
+             <div class="modal-body">
+               <div class="form-group"><label>Full Name *</label><input v-model="newTeacher.displayName" /></div>
+               <div class="form-group"><label>Username *</label><input v-model="newTeacher.username" /></div>
+               <div class="form-group"><label>Password *</label><input v-model="newTeacher.password" type="password" /></div>
+               <div class="form-group">
+                 <label>School *</label>
+                 <select v-model="newTeacher.schoolId">
+                   <option value="">Select school...</option>
+                   <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
+                 </select>
+               </div>
+               <div v-if="teacherError" class="error-msg">{{ teacherError }}</div>
+               <button class="btn btn-primary" style="width:100%" @click="addTeacher">Add Teacher</button>
+             </div>
+           </div>
+         </div>
+       </div>
+
+       <!-- Scenarios Tab -->
+       <div v-if="tab === 'scenarios'">
+         <div class="tab-header">
+           <h2 class="page-title">Scenarios</h2>
+           <button class="btn btn-primary" @click="openAddScenario">+ Add Scenario</button>
+         </div>
+         <div class="card mt-16">
+           <table class="data-table">
+             <thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Points</th><th>Question</th><th>Actions</th></tr></thead>
+             <tbody>
+               <tr v-for="s in scenarios" :key="s.id">
+                 <td class="bold">{{ s.id }}</td>
+                 <td>{{ s.title }}</td>
+                 <td><span class="badge badge-blue">Type {{ s.typeOfScenario }}</span></td>
+                 <td>{{ s.points }}</td>
+                 <td class="truncate">{{ s.question }}</td>
+                 <td>
+                   <button class="btn-small btn-edit" @click="editScenario(s)">✏️ Edit</button>
+                   <button class="btn-small btn-delete" @click="deleteScenario(s.id)">🗑️ Delete</button>
+                 </td>
+               </tr>
+               <tr v-if="!scenarios.length"><td colspan="6" class="empty-row">No scenarios added yet</td></tr>
+             </tbody>
+           </table>
+         </div>
+
+         <!-- Add/Edit Scenario Modal -->
+         <div v-if="showScenarioModal" class="modal-overlay" @click.self="closeScenarioModal">
+           <div class="modal-box scenario-modal">
+             <div class="modal-header">
+               <h3>{{ editingScenarioId ? 'Edit Scenario' : 'Add Scenario' }}</h3>
+               <button class="close-btn" @click="closeScenarioModal">✕</button>
+             </div>
+              <div class="modal-body">
+                <div class="form-group"><label>Title *</label><input v-model="currentScenario.title" /></div>
+                <div class="form-group"><label>Type *</label><input v-model.number="currentScenario.typeOfScenario" type="number" min="1" max="5" /></div>
+                <div class="form-group"><label>Points *</label><input v-model.number="currentScenario.points" type="number" min="0" /></div>
+                <div class="form-group"><label>Setup Messages (type\text\delayMs per line, e.g., bot\Hello\0)</label><textarea v-model="currentScenario.setupMessagesText" placeholder="bot\Welcome to scenario\0&#10;system\Read the message\1000"></textarea></div>
+                <div class="form-group"><label>Question *</label><textarea v-model="currentScenario.question"></textarea></div>
+                <div class="form-group"><label>Options (key\text per line, e.g., A\Answer 1)</label><textarea v-model="currentScenario.optionsText" placeholder="A\First option&#10;B\Second option&#10;C\Third option"></textarea></div>
+                <div class="form-group"><label>Correct Answers (one key per line, e.g., A)</label><textarea v-model="currentScenario.correctAnswersText" placeholder="A&#10;B"></textarea></div>
+                <div class="form-group"><label>Correct Explanation *</label><textarea v-model="currentScenario.correctExplanation"></textarea></div>
+                <div class="form-group"><label>Wrong Explanation *</label><textarea v-model="currentScenario.wrongExplanation"></textarea></div>
+                <div class="form-group"><label>Consequence Type</label><input v-model="currentScenario.consequenceType" placeholder="e.g., ACCOUNT_HACKED" /></div>
+                <div class="form-group"><label>Consequence Messages (type\text\delayMs per line)</label><textarea v-model="currentScenario.consequenceMessagesText" placeholder="consequence\You clicked it!\0&#10;consequence\Your account is compromised\1500"></textarea></div>
+                <div v-if="scenarioError" class="error-msg">{{ scenarioError }}</div>
+                <button class="btn btn-primary" style="width:100%" @click="saveScenario">{{ editingScenarioId ? 'Update Scenario' : 'Add Scenario' }}</button>
               </div>
-              <div v-if="teacherError" class="error-msg">{{ teacherError }}</div>
-              <button class="btn btn-primary" style="width:100%" @click="addTeacher">Add Teacher</button>
             </div>
           </div>
-        </div>
-      </div>
-    </main>
+       </div>
+     </main>
   </div>
 </template>
 
@@ -252,10 +305,29 @@ const showAddTeacher = ref(false)
 const newTeacher = ref({ displayName: '', username: '', password: '', schoolId: '' })
 const teacherError = ref('')
 
+const scenarios = ref([])
+const showScenarioModal = ref(false)
+const editingScenarioId = ref(null)
+const scenarioError = ref('')
+const currentScenario = ref({
+  title: '',
+  typeOfScenario: 1,
+  points: 20,
+  question: '',
+  correctExplanation: '',
+  wrongExplanation: '',
+  consequenceType: '',
+  setupMessagesText: '',
+  optionsText: '',
+  correctAnswersText: '',
+  consequenceMessagesText: ''
+})
+
 onMounted(() => {
   loadStats()
   loadSchools()
   loadTeachers()
+  loadScenarios()
 })
 
 async function loadStats() {
@@ -268,6 +340,10 @@ async function loadSchools() {
 }
 async function loadTeachers() {
   teachers.value = (await api.get('/admin/teachers')).data
+}
+
+async function loadScenarios() {
+  scenarios.value = (await api.get('/admin/scenarios')).data
 }
 
 async function viewSchool(id) {
@@ -298,6 +374,139 @@ async function addTeacher() {
     newTeacher.value = { displayName: '', username: '', password: '', schoolId: '' }
     await loadTeachers()
   } catch (e) { teacherError.value = e.response?.data?.error || 'Failed' }
+}
+
+function openAddScenario() {
+  editingScenarioId.value = null
+  currentScenario.value = {
+    title: '',
+    typeOfScenario: 1,
+    points: 20,
+    question: '',
+    correctExplanation: '',
+    wrongExplanation: '',
+    consequenceType: '',
+    setupMessagesText: '',
+    optionsText: '',
+    correctAnswersText: '',
+    consequenceMessagesText: ''
+  }
+  scenarioError.value = ''
+  showScenarioModal.value = true
+}
+
+function editScenario(scenario) {
+  editingScenarioId.value = scenario.id
+
+  // Convert setupMessages to text format (type\text\delayMs per line)
+  const setupMessagesText = (scenario.setupMessages || [])
+    .map(msg => `${msg.type}\\${msg.text}\\${msg.delayMs}`)
+    .join('\n')
+
+  // Convert options array to text format (key\text per line)
+  const optionsText = (scenario.options || [])
+    .map(opt => `${opt.key}\\${opt.text}`)
+    .join('\n')
+
+  // Convert correctAnswers to text format (one per line)
+  const correctAnswersText = Array.from(scenario.correctAnswers || []).join('\n')
+
+  // Convert consequenceMessages to text format (type\text\delayMs per line)
+  const consequenceMessagesText = (scenario.consequenceMessages || [])
+    .map(msg => `${msg.type}\\${msg.text}\\${msg.delayMs}`)
+    .join('\n')
+
+  currentScenario.value = {
+    ...scenario,
+    setupMessagesText,
+    optionsText,
+    correctAnswersText,
+    consequenceMessagesText
+  }
+  scenarioError.value = ''
+  showScenarioModal.value = true
+}
+
+async function saveScenario() {
+  scenarioError.value = ''
+  if (!currentScenario.value.title || !currentScenario.value.question) {
+    scenarioError.value = 'Title and Question are required'
+    return
+  }
+
+  try {
+    // Parse setupMessages from text format (type\text\delayMs per line)
+    const setupMessages = currentScenario.value.setupMessagesText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        const [type, text, delayMs] = line.split('\\').map(s => s.trim())
+        return { type, text, delayMs: parseInt(delayMs) || 0 }
+      })
+
+    // Parse options from text format (key\text per line)
+    const options = currentScenario.value.optionsText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        const [key, text] = line.split('\\').map(s => s.trim())
+        return { key, text }
+      })
+
+    // Parse correct answers from text format (one per line)
+    const correctAnswers = currentScenario.value.correctAnswersText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+
+    // Parse consequenceMessages from text format (type\text\delayMs per line)
+    const consequenceMessages = currentScenario.value.consequenceMessagesText
+      .split('\n')
+      .map(line => line.trim())
+      .filter(line => line.length > 0)
+      .map(line => {
+        const [type, text, delayMs] = line.split('\\').map(s => s.trim())
+        return { type, text, delayMs: parseInt(delayMs) || 0 }
+      })
+
+    // Build payload
+    const payload = {
+      title: currentScenario.value.title,
+      typeOfScenario: currentScenario.value.typeOfScenario,
+      points: currentScenario.value.points,
+      question: currentScenario.value.question,
+      correctExplanation: currentScenario.value.correctExplanation,
+      wrongExplanation: currentScenario.value.wrongExplanation,
+      consequenceType: currentScenario.value.consequenceType,
+      setupMessages: setupMessages,
+      options: options,
+      correctAnswers: correctAnswers,
+      consequenceMessages: consequenceMessages
+    }
+
+    if (editingScenarioId.value) {
+      await api.put(`/admin/scenarios/${editingScenarioId.value}`, payload)
+    } else {
+      await api.post('/admin/scenarios', payload)
+    }
+    closeScenarioModal()
+    await loadScenarios()
+  } catch (e) { scenarioError.value = e.response?.data?.error || 'Failed to save scenario' }
+}
+
+async function deleteScenario(id) {
+  if (!confirm('Are you sure you want to delete this scenario?')) return
+  try {
+    await api.delete(`/admin/scenarios/${id}`)
+    await loadScenarios()
+  } catch (e) { alert('Failed to delete scenario: ' + (e.response?.data?.error || 'Unknown error')) }
+}
+
+function closeScenarioModal() {
+  showScenarioModal.value = false
+  editingScenarioId.value = null
 }
 
 function logout() { auth.logout(); router.push('/login') }
@@ -400,4 +609,34 @@ nav button.active { background: #eef2ff; color: #4f46e5; }
 .error-msg { background: #fee2e2; color: #991b1b; padding: 10px 14px; border-radius: 10px; font-size: 0.9rem; margin-bottom: 12px; }
 
 .loading { padding: 40px; text-align: center; color: #94a3b8; }
+
+.btn { padding: 10px 16px; border-radius: 10px; border: none; font-family: inherit; font-size: 0.9rem; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+.btn-primary { background: #4f46e5; color: white; }
+.btn-primary:hover { background: #4338ca; }
+
+.btn-small { padding: 5px 10px; border-radius: 6px; border: none; font-family: inherit; font-size: 0.75rem; font-weight: 600; cursor: pointer; margin-right: 4px; transition: all 0.2s; }
+.btn-edit { background: #dbeafe; color: #1e40af; }
+.btn-edit:hover { background: #bfdbfe; }
+.btn-delete { background: #fee2e2; color: #991b1b; }
+.btn-delete:hover { background: #fecaca; }
+
+.badge { display: inline-block; padding: 4px 10px; border-radius: 99px; font-weight: 700; font-size: 0.75rem; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-yellow { background: #fef3c7; color: #92400e; }
+
+.truncate { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.scenario-modal { max-width: 700px; }
+
+.form-group { margin-bottom: 16px; }
+.form-group label { display: block; font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; color: #1e293b; }
+.form-group input, .form-group select, .form-group textarea {
+  width: 100%; padding: 10px; border: 2px solid #e2e8f0; border-radius: 10px;
+  font-family: inherit; font-size: 0.9rem; transition: border-color 0.2s;
+}
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+  outline: none; border-color: #4f46e5;
+}
+.form-group textarea { resize: vertical; min-height: 80px; }
 </style>
