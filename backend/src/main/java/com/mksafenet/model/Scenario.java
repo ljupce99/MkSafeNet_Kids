@@ -35,7 +35,7 @@ public class Scenario {
         this.consequenceType = consequenceType;
         this.consequenceMessages = consequenceMessages;
         this.points = points;
-        this.typeOfScenario = typeOfScenario;
+        setTypeOfScenario(typeOfScenario);
     }
 
     @Convert(converter = ChatMessageListConverter.class)
@@ -63,4 +63,11 @@ public class Scenario {
 
     private int points;
     private int typeOfScenario;
+
+    public void setTypeOfScenario(int typeOfScenario) {
+        if (typeOfScenario < 1 || typeOfScenario > 5) {
+            throw new IllegalArgumentException("typeOfScenario must be between 1 and 5");
+        }
+        this.typeOfScenario = typeOfScenario;
+    }
 }

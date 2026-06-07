@@ -46,6 +46,7 @@ public class ScenarioService {
         if (scenario == null) {
             throw new IllegalArgumentException("Scenario cannot be null");
         }
+        validateScenarioType(scenario.getTypeOfScenario());
 
         scenario.setId(null);
         return scenarioRepository.save(scenario);
@@ -56,6 +57,7 @@ public class ScenarioService {
         if (scenario == null) {
             throw new IllegalArgumentException("Scenario cannot be null");
         }
+        validateScenarioType(scenario.getTypeOfScenario());
 
         Scenario existing = getScenarioById(id);
         existing.setTitle(scenario.getTitle());
@@ -95,12 +97,19 @@ public class ScenarioService {
     //TODO : Add Tabel of Contents for scenarios
     // and rendom get scenarios for each student
     public Scenario getScenario(int scenarioType) {
+        validateScenarioType(scenarioType);
         List<Scenario> scenarioListWithType = scenarioRepository.findByTypeOfScenario(scenarioType);
         if (scenarioListWithType.isEmpty()) {
             throw new IllegalArgumentException("No scenarios found for type: " + scenarioType);
         }
 
         return scenarioListWithType.get(new Random().nextInt(scenarioListWithType.size()));
+    }
+
+    private void validateScenarioType(int scenarioType) {
+        if (scenarioType < 1 || scenarioType > TOTAL_SCENARIOS) {
+            throw new IllegalArgumentException("typeOfScenario must be in [1,2,3,4,5]");
+        }
     }
 
 //    private Scenario scenario1() {
