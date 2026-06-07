@@ -3,7 +3,7 @@
     <div class="consequence-panel" :class="'type-' + typeClass">
       <div class="consequence-header">
         <div class="consequence-icon">{{ icon }}</div>
-        <h2>⚠️ What Happened...</h2>
+        <h2>Што се случи??...</h2>
       </div>
 
       <div class="consequence-feed">
@@ -17,9 +17,9 @@
       </div>
 
       <div v-if="allShown" class="consequence-footer">
-        <p class="learned">Now you know! Let's keep going. 💪</p>
+        <p class="learned">Сега знаеш! Ајде да продолжиме. 💪</p>
         <button class="btn btn-primary continue-btn" @click="handleDone">
-          Continue →
+          Продолжи →
         </button>
       </div>
     </div>

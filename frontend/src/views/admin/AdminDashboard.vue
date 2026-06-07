@@ -3,24 +3,23 @@
     <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span>🛡️</span>
-        <span>MkSafeNet</span>
+        <img src="../../assets/logo.png" alt="MkSafeNet Logo" class="sidebar-logo-img" />
       </div>
       <nav>
-        <button :class="{ active: tab === 'stats' }" @click="tab = 'stats'">📊 Statistics</button>
-        <button :class="{ active: tab === 'schools' }" @click="tab = 'schools'">🏫 Schools</button>
-        <button :class="{ active: tab === 'teachers' }" @click="tab = 'teachers'">👩‍🏫 Teachers</button>
-        <button :class="{ active: tab === 'scenarios' }" @click="tab = 'scenarios'">🎮 Scenarios</button>
+        <button :class="{ active: tab === 'stats' }" @click="tab = 'stats'">📊 Статистика</button>
+        <button :class="{ active: tab === 'schools' }" @click="tab = 'schools'">🏫 Училишта</button>
+        <button :class="{ active: tab === 'teachers' }" @click="tab = 'teachers'">👩‍🏫 Наставници</button>
+        <button :class="{ active: tab === 'scenarios' }" @click="tab = 'scenarios'">🎮 Сценарија</button>
       </nav>
       <div class="sidebar-footer">
         <div class="user-info">
           <span class="user-avatar">👤</span>
           <div>
             <div class="user-name">{{ auth.displayName }}</div>
-            <div class="user-role">Administrator</div>
+            <div class="user-role">Администратор</div>
           </div>
         </div>
-        <button class="logout-btn" @click="logout">Sign Out</button>
+        <button class="logout-btn" @click="logout">Одјави се</button>
       </div>
     </aside>
 
@@ -28,45 +27,45 @@
     <main class="main-content">
       <!-- Statistics Tab -->
       <div v-if="tab === 'stats'">
-        <h2 class="page-title">Global Statistics</h2>
-        <div v-if="loadingStats" class="loading">Loading...</div>
+        <h2 class="page-title">Статистика</h2>
+        <div v-if="loadingStats" class="loading">Се вчитува...</div>
         <div v-else-if="stats">
           <!-- KPI Cards -->
           <div class="kpi-grid">
             <div class="kpi-card">
               <div class="kpi-icon">🏫</div>
               <div class="kpi-num">{{ stats.totalSchools }}</div>
-              <div class="kpi-label">Schools</div>
+              <div class="kpi-label">Училишта</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-icon">👥</div>
               <div class="kpi-num">{{ stats.totalStudents }}</div>
-              <div class="kpi-label">Total Students</div>
+              <div class="kpi-label">Ученици</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-icon">✅</div>
               <div class="kpi-num">{{ stats.completionRate }}%</div>
-              <div class="kpi-label">Completion Rate</div>
+              <div class="kpi-label">Рата на завршеност</div>
             </div>
             <div class="kpi-card">
               <div class="kpi-icon">⭐</div>
               <div class="kpi-num">{{ stats.averageScore }}</div>
-              <div class="kpi-label">Avg Score / 100</div>
+              <div class="kpi-label">Средна оценка / 100</div>
             </div>
           </div>
 
           <!-- School Performance -->
           <div class="card mt-24">
-            <h3 class="section-title">School Performance</h3>
+            <h3 class="section-title">Успех по училиште</h3>
             <table class="data-table">
               <thead>
                 <tr>
-                  <th>School</th>
-                  <th>City</th>
-                  <th>Students</th>
-                  <th>Completed</th>
-                  <th>Completion</th>
-                  <th>Avg Score</th>
+                  <th>Име на училиште</th>
+                  <th>град</th>
+                  <th>ученици</th>
+                  <th>завршени тестови</th>
+                  <th>завршеност во проценти</th>
+                  <th>средна оценка</th>
                 </tr>
               </thead>
               <tbody>
@@ -91,7 +90,7 @@
 
           <!-- Scenario Difficulty -->
           <div class="card mt-24">
-            <h3 class="section-title">Scenario Difficulty (% correct answers)</h3>
+            <h3 class="section-title">Комплексност на сценарио (% точни одговори)</h3>
             <div class="scenario-bars">
               <div v-for="sc in stats.scenarioStats" :key="sc.scenarioId" class="scenario-bar-row">
                 <span class="sc-label">{{ sc.scenarioId }}. {{ sc.title }}</span>
@@ -101,7 +100,7 @@
                   </div>
                 </div>
                 <span class="sc-pct">{{ sc.successRate }}%</span>
-                <span class="sc-total">({{ sc.totalAnswers }} answered)</span>
+                <span class="sc-total">({{ sc.totalAnswers }} одговорени)</span>
               </div>
             </div>
           </div>
@@ -116,7 +115,7 @@
               <div class="modal-body">
                 <table class="data-table">
                   <thead>
-                    <tr><th>Student</th><th>Session</th><th>Score</th><th>Status</th><th>Completed</th></tr>
+                    <tr><th>ученик</th><th>сесија</th><th>оценка</th><th>статус</th><th>завршено</th></tr>
                   </thead>
                   <tbody>
                     <tr v-for="s in schoolDetail.students" :key="s.id">
@@ -125,13 +124,13 @@
                       <td><span class="score-tag" :class="scoreClass(s.score)">{{ s.score }}</span></td>
                       <td>
                         <span class="badge" :class="s.completed ? 'badge-green' : 'badge-yellow'">
-                          {{ s.completed ? 'Done' : 'In Progress' }}
+                          {{ s.completed ? 'Завршено' : 'Во изработка' }}
                         </span>
                       </td>
                       <td>{{ s.completedAt ? fmtDate(s.completedAt) : '-' }}</td>
                     </tr>
                     <tr v-if="!schoolDetail.students.length">
-                      <td colspan="5" class="empty-row">No students yet</td>
+                      <td colspan="5" class="empty-row">нема ученици</td>
                     </tr>
                   </tbody>
                 </table>
@@ -144,12 +143,12 @@
       <!-- Schools Tab -->
       <div v-if="tab === 'schools'">
         <div class="tab-header">
-          <h2 class="page-title">Schools</h2>
-          <button class="btn btn-primary" @click="showAddSchool = true">+ Add School</button>
+          <h2 class="page-title">Училишта</h2>
+          <button class="btn btn-primary" @click="showAddSchool = true">+ додади училиште</button>
         </div>
         <div class="card mt-16">
           <table class="data-table">
-            <thead><tr><th>Name</th><th>City</th><th>Address</th><th>Added</th></tr></thead>
+            <thead><tr><th>Име</th><th>град</th><th>адреса</th><th>додадено на</th></tr></thead>
             <tbody>
               <tr v-for="s in schools" :key="s.id">
                 <td class="bold">{{ s.name }}</td>
@@ -157,7 +156,7 @@
                 <td>{{ s.address || '-' }}</td>
                 <td>{{ fmtDate(s.createdAt) }}</td>
               </tr>
-              <tr v-if="!schools.length"><td colspan="4" class="empty-row">No schools added yet</td></tr>
+              <tr v-if="!schools.length"><td colspan="4" class="empty-row">нема училишта</td></tr>
             </tbody>
           </table>
         </div>
@@ -166,15 +165,15 @@
         <div v-if="showAddSchool" class="modal-overlay" @click.self="showAddSchool = false">
           <div class="modal-box small-modal">
             <div class="modal-header">
-              <h3>Add School</h3>
+              <h3>Додади училиште</h3>
               <button class="close-btn" @click="showAddSchool = false">✕</button>
             </div>
             <div class="modal-body">
-              <div class="form-group"><label>School Name *</label><input v-model="newSchool.name" /></div>
-              <div class="form-group"><label>City</label><input v-model="newSchool.city" /></div>
-              <div class="form-group"><label>Address</label><input v-model="newSchool.address" /></div>
+              <div class="form-group"><label>име на училипште *</label><input v-model="newSchool.name" /></div>
+              <div class="form-group"><label>град</label><input v-model="newSchool.city" /></div>
+              <div class="form-group"><label>адреса</label><input v-model="newSchool.address" /></div>
               <div v-if="schoolError" class="error-msg">{{ schoolError }}</div>
-              <button class="btn btn-primary" style="width:100%" @click="addSchool">Add School</button>
+              <button class="btn btn-primary" style="width:100%" @click="addSchool">додади</button>
             </div>
           </div>
         </div>
@@ -183,12 +182,12 @@
       <!-- Teachers Tab -->
       <div v-if="tab === 'teachers'">
         <div class="tab-header">
-          <h2 class="page-title">Teachers</h2>
-          <button class="btn btn-primary" @click="showAddTeacher = true">+ Add Teacher</button>
+          <h2 class="page-title">Наставници</h2>
+          <button class="btn btn-primary" @click="showAddTeacher = true">+ додади наставник</button>
         </div>
         <div class="card mt-16">
           <table class="data-table">
-            <thead><tr><th>Name</th><th>Username</th><th>School</th><th>Added</th></tr></thead>
+            <thead><tr><th>име и презиме</th><th>корисничко име</th><th>училиште</th><th>додадено на</th></tr></thead>
             <tbody>
               <tr v-for="t in teachers" :key="t.id">
                 <td class="bold">{{ t.displayName }}</td>
@@ -196,7 +195,7 @@
                 <td>{{ t.schoolName || '-' }}</td>
                 <td>{{ fmtDate(t.createdAt) }}</td>
               </tr>
-              <tr v-if="!teachers.length"><td colspan="4" class="empty-row">No teachers yet</td></tr>
+              <tr v-if="!teachers.length"><td colspan="4" class="empty-row">нема наставници</td></tr>
             </tbody>
           </table>
         </div>
@@ -205,22 +204,22 @@
          <div v-if="showAddTeacher" class="modal-overlay" @click.self="showAddTeacher = false">
            <div class="modal-box small-modal">
              <div class="modal-header">
-               <h3>Add Teacher</h3>
+               <h3>Додади наставник</h3>
                <button class="close-btn" @click="showAddTeacher = false">✕</button>
              </div>
              <div class="modal-body">
-               <div class="form-group"><label>Full Name *</label><input v-model="newTeacher.displayName" /></div>
-               <div class="form-group"><label>Username *</label><input v-model="newTeacher.username" /></div>
-               <div class="form-group"><label>Password *</label><input v-model="newTeacher.password" type="password" /></div>
+               <div class="form-group"><label>Име и презиме *</label><input v-model="newTeacher.displayName" /></div>
+               <div class="form-group"><label>Корисничко име *</label><input v-model="newTeacher.username" /></div>
+               <div class="form-group"><label>Лозинка *</label><input v-model="newTeacher.password" type="password" /></div>
                <div class="form-group">
-                 <label>School *</label>
+                 <label>Училиште *</label>
                  <select v-model="newTeacher.schoolId">
-                   <option value="">Select school...</option>
+                   <option value="">Одбери училиште...</option>
                    <option v-for="s in schools" :key="s.id" :value="s.id">{{ s.name }}</option>
                  </select>
                </div>
                <div v-if="teacherError" class="error-msg">{{ teacherError }}</div>
-               <button class="btn btn-primary" style="width:100%" @click="addTeacher">Add Teacher</button>
+               <button class="btn btn-primary" style="width:100%" @click="addTeacher">додади</button>
              </div>
            </div>
          </div>
@@ -229,25 +228,25 @@
        <!-- Scenarios Tab -->
        <div v-if="tab === 'scenarios'">
          <div class="tab-header">
-           <h2 class="page-title">Scenarios</h2>
-           <button class="btn btn-primary" @click="openAddScenario">+ Add Scenario</button>
+           <h2 class="page-title">Сценарија</h2>
+           <button class="btn btn-primary" @click="openAddScenario">+ Додади сценарио</button>
          </div>
          <div class="card mt-16">
            <table class="data-table">
-             <thead><tr><th>ID</th><th>Title</th><th>Type</th><th>Points</th><th>Question</th><th>Actions</th></tr></thead>
+             <thead><tr><th>ID</th><th>наслов</th><th>тип</th><th>поени</th><th>прашање</th><th>опции</th></tr></thead>
              <tbody>
                <tr v-for="s in scenarios" :key="s.id">
                  <td class="bold">{{ s.id }}</td>
                  <td>{{ s.title }}</td>
-                 <td><span class="badge badge-blue">Type {{ s.typeOfScenario }}</span></td>
+                 <td><span class="badge badge-blue">тип {{ s.typeOfScenario }}</span></td>
                  <td>{{ s.points }}</td>
                  <td class="truncate">{{ s.question }}</td>
                  <td>
-                   <button class="btn-small btn-edit" @click="editScenario(s)">✏️ Edit</button>
-                   <button class="btn-small btn-delete" @click="deleteScenario(s.id)">🗑️ Delete</button>
+                   <button class="btn-small btn-edit" @click="editScenario(s)">промени</button>
+                   <button class="btn-small btn-delete" @click="deleteScenario(s.id)">избриши</button>
                  </td>
                </tr>
-               <tr v-if="!scenarios.length"><td colspan="6" class="empty-row">No scenarios added yet</td></tr>
+               <tr v-if="!scenarios.length"><td colspan="6" class="empty-row">нема сценарија</td></tr>
              </tbody>
            </table>
          </div>
@@ -260,19 +259,19 @@
                <button class="close-btn" @click="closeScenarioModal">✕</button>
              </div>
               <div class="modal-body">
-                <div class="form-group"><label>Title *</label><input v-model="currentScenario.title" /></div>
-                <div class="form-group"><label>Type *</label><input v-model.number="currentScenario.typeOfScenario" type="number" min="1" max="5" /></div>
-                <div class="form-group"><label>Points *</label><input v-model.number="currentScenario.points" type="number" min="0" /></div>
-                <div class="form-group"><label>Setup Messages (type\text\delayMs per line, e.g., bot\Hello\0)</label><textarea v-model="currentScenario.setupMessagesText" placeholder="bot\Welcome to scenario\0&#10;system\Read the message\1000"></textarea></div>
-                <div class="form-group"><label>Question *</label><textarea v-model="currentScenario.question"></textarea></div>
-                <div class="form-group"><label>Options (key\text per line, e.g., A\Answer 1)</label><textarea v-model="currentScenario.optionsText" placeholder="A\First option&#10;B\Second option&#10;C\Third option"></textarea></div>
-                <div class="form-group"><label>Correct Answers (one key per line, e.g., A)</label><textarea v-model="currentScenario.correctAnswersText" placeholder="A&#10;B"></textarea></div>
-                <div class="form-group"><label>Correct Explanation *</label><textarea v-model="currentScenario.correctExplanation"></textarea></div>
-                <div class="form-group"><label>Wrong Explanation *</label><textarea v-model="currentScenario.wrongExplanation"></textarea></div>
-                <div class="form-group"><label>Consequence Type</label><input v-model="currentScenario.consequenceType" placeholder="e.g., ACCOUNT_HACKED" /></div>
-                <div class="form-group"><label>Consequence Messages (type\text\delayMs per line)</label><textarea v-model="currentScenario.consequenceMessagesText" placeholder="consequence\You clicked it!\0&#10;consequence\Your account is compromised\1500"></textarea></div>
+                <div class="form-group"><label>Наслов *</label><input v-model="currentScenario.title" /></div>
+                <div class="form-group"><label>Тип *</label><input v-model.number="currentScenario.typeOfScenario" type="number" min="1" max="5" /></div>
+                <div class="form-group"><label>Поени *</label><input v-model.number="currentScenario.points" type="number" min="0" /></div>
+                <div class="form-group"><label>Подесување на пораки (type\text\delayMs по ред)</label><textarea v-model="currentScenario.setupMessagesText" placeholder="bot\Добредојдовте во сценариото\0&#10;system\Цитај ја пораката\1000"></textarea></div>
+                <div class="form-group"><label>Прашање *</label><textarea v-model="currentScenario.question"></textarea></div>
+                <div class="form-group"><label>Опции (key\text по ред)</label><textarea v-model="currentScenario.optionsText" placeholder="A\прва опција&#10;B\втора опција&#10;C\трета опција"></textarea></div>
+                <div class="form-group"><label>Точни одговори (секој одговор во нов ред)</label><textarea v-model="currentScenario.correctAnswersText" placeholder="A&#10;B"></textarea></div>
+                <div class="form-group"><label>Објансување за точен одговор*</label><textarea v-model="currentScenario.correctExplanation"></textarea></div>
+                <div class="form-group"><label>Објаснување за неточен одговор*</label><textarea v-model="currentScenario.wrongExplanation"></textarea></div>
+                <div class="form-group"><label>Тип на последица</label><input v-model="currentScenario.consequenceType" placeholder="пример: ACCOUNT_HACKED" /></div>
+                <div class="form-group"><label>Порака од последица (type\text\delayMs по ред)</label><textarea v-model="currentScenario.consequenceMessagesText" placeholder="последица\Го притисна!\0&#10;последица\Твојата сметка е компромитирана\1500"></textarea></div>
                 <div v-if="scenarioError" class="error-msg">{{ scenarioError }}</div>
-                <button class="btn btn-primary" style="width:100%" @click="saveScenario">{{ editingScenarioId ? 'Update Scenario' : 'Add Scenario' }}</button>
+                <button class="btn btn-primary" style="width:100%" @click="saveScenario">{{ editingScenarioId ? 'промени' : 'додади' }}</button>
               </div>
             </div>
           </div>
@@ -430,7 +429,7 @@ function editScenario(scenario) {
 async function saveScenario() {
   scenarioError.value = ''
   if (!currentScenario.value.title || !currentScenario.value.question) {
-    scenarioError.value = 'Title and Question are required'
+    scenarioError.value = 'Наслов и прашање полињата се задолжителни!'
     return
   }
 
@@ -493,15 +492,15 @@ async function saveScenario() {
     }
     closeScenarioModal()
     await loadScenarios()
-  } catch (e) { scenarioError.value = e.response?.data?.error || 'Failed to save scenario' }
+  } catch (e) { scenarioError.value = e.response?.data?.error || 'Грешка во зачувување на сценарио' }
 }
 
 async function deleteScenario(id) {
-  if (!confirm('Are you sure you want to delete this scenario?')) return
+  if (!confirm('Дали сте сигурни?')) return
   try {
     await api.delete(`/admin/scenarios/${id}`)
     await loadScenarios()
-  } catch (e) { alert('Failed to delete scenario: ' + (e.response?.data?.error || 'Unknown error')) }
+  } catch (e) { alert('Грешка во бришењето!: ' + (e.response?.data?.error || 'непозната грешка')) }
 }
 
 function closeScenarioModal() {
@@ -533,11 +532,10 @@ function fmtDate(d) {
   position: sticky; top: 0; height: 100vh;
 }
 .sidebar-logo {
-  display: flex; align-items: center; gap: 10px;
-  font-size: 1.25rem; font-weight: 900; color: #4f46e5;
+  display: flex; align-items: center; justify-content: center;
   margin-bottom: 32px; padding: 0 8px;
 }
-.sidebar-logo span:first-child { font-size: 1.5rem; }
+.sidebar-logo-img { width: 180px; height: 80px; object-fit: contain; }
 
 nav { display: flex; flex-direction: column; gap: 4px; flex: 1; }
 nav button {
