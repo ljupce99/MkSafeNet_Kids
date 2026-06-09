@@ -1,11 +1,12 @@
 <template>
   <div class="chat-app">
+
     <!-- Header -->
     <div class="chat-header">
       <div class="bot-avatar">🤖</div>
       <div class="bot-info">
         <span class="bot-name">SafeBot</span>
-        <span class="bot-status">{{ sessionInfo?.sessionName || 'Phishing Simulator' }} · {{ sessionInfo?.schoolName }}</span>
+        <span class="bot-status">{{ sessionInfo?.sessionName || 'Вежбаме, учиме и препознаваме „Фишинг" напади.' }} · {{ sessionInfo?.schoolName }}</span>
       </div>
       <div v-if="phase !== 'COMPLETE'" class="progress-wrap">
         <div class="progress-bar">
@@ -18,16 +19,20 @@
     <!-- Join Screen -->
     <div v-if="phase === 'JOIN'" class="join-screen">
       <div class="join-card">
-        <div class="join-emoji">👋</div>
-        <h2>Welcome to the Phishing Challenge!</h2>
-        <p>You'll learn how to spot online scams through real-world simulations.</p>
+        <div class="join-logo">
+          <img src="../assets/logo.png" alt="MkSafeNet Logo" class="logo-img" />
+        </div>
+        <h2>{{ sessionInfo?.sessionName || 'Phishing Challenge' }}</h2>
+        <p>{{ sessionInfo?.schoolName }}</p>
+        <br>
+        <p class="welcome-text">Ќе научиш како да препознаеш измами на интернет и како да се заштитиш!</p>
         <div v-if="joinError" class="error-msg">{{ joinError }}</div>
         <div class="form-group">
-          <label>Your Name</label>
-          <input v-model="studentName" type="text" placeholder="Enter your first name" maxlength="40" @keyup.enter="startChat" />
+          <label>Твоето име</label>
+          <input v-model="studentName" type="text" placeholder="Внеси го твоето име" maxlength="40" @keyup.enter="startChat" />
         </div>
         <button class="btn btn-primary start-btn" @click="startChat" :disabled="!studentName.trim() || starting">
-          {{ starting ? 'Starting...' : '🚀 Start Challenge' }}
+          {{ starting ? 'Започнува...' : '🚀 ЗАПОЧНИ' }}
         </button>
       </div>
     </div>
@@ -36,13 +41,19 @@
     <div v-if="phase === 'INVALID'" class="join-screen">
       <div class="join-card error-card">
         <div class="join-emoji">❌</div>
-        <h2>Invalid Session</h2>
-        <p>This QR code is expired or invalid. Ask your teacher for a new one.</p>
+        <h2>Невалидна сесија</h2>
+        <p>Овој QR код е истечен или невалиден. Прашај го наставникот за нов код.</p>
       </div>
     </div>
 
     <!-- Chat Area -->
     <div v-if="phase !== 'JOIN' && phase !== 'INVALID' && phase !== 'COMPLETE'" class="chat-body" ref="chatBody">
+      <div class="chat-header">
+        <div>Сценарио {{ currentScenarioId }} од 5</div>
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: progressPct + '%' }"></div>
+        </div>
+      </div>
       <div class="messages">
         <div v-for="(msg, i) in visibleMessages" :key="i"
              class="msg-wrap" :class="'msg-' + msg.type">
@@ -81,7 +92,7 @@
         <button v-if="selectedAnswer && !answered"
                 class="btn btn-primary submit-btn"
                 @click="submitAnswer">
-          Submit Answer ✓
+          Испрати одговор ✓
         </button>
       </div>
     </div>
@@ -102,9 +113,9 @@
           <span class="score-label">/ 100</span>
         </div>
         <div class="grade-badge">{{ grade }}</div>
-        <h2>{{ finalScore >= 60 ? '🏆 Challenge Complete!' : '📚 Keep Learning!' }}</h2>
+        <h2>{{ finalScore >= 60 ? '🏆 Предизвикот е завршен!' : '📚 Продолжи со учење!' }}</h2>
         <p class="passed-text" :class="finalScore >= 60 ? 'text-success' : 'text-warn'">
-          {{ finalScore >= 60 ? 'You passed! You are now a Phishing Spotter.' : 'You completed the challenge. Practice makes perfect!' }}
+          {{ finalScore >= 60 ? 'Положивте! Ти си одличен препознавач на „фишинг“ напади.' : 'Го заврши предизвикот!. Вежбањето се исплати.' }}
         </p>
 
         <div class="badges">
@@ -112,11 +123,11 @@
         </div>
 
         <div class="results-table">
-          <h3>Your Results</h3>
+          <h3>Твоите резултати</h3>
           <div v-for="r in scenarioResults" :key="r.scenarioId" class="result-row">
             <span class="result-icon">{{ r.correct ? '✅' : '❌' }}</span>
             <span class="result-title">{{ r.scenarioTitle }}</span>
-            <span class="result-pts">{{ r.pointsEarned }}/20 pts</span>
+            <span class="result-pts">{{ r.pointsEarned }}/20 поени</span>
           </div>
         </div>
 
@@ -126,7 +137,7 @@
           </div>
         </div>
 
-        <p class="finish-note">You can now close this window. Great job! 🎉</p>
+        <p class="finish-note">Сега можеш да го затвориш прозорецот. Браво!</p>
       </div>
     </div>
   </div>
@@ -186,7 +197,7 @@ const progressPct = computed(() => {
 
 const scenarioProgress = computed(() => {
   if (!currentScenarioId.value) return ''
-  return `Scenario ${currentScenarioId.value} of 5`
+  return `Сценарио ${currentScenarioId.value} од 5`
 })
 
 const scoreClass = computed(() => {
@@ -208,7 +219,7 @@ async function startChat() {
     phase.value = 'SCENARIO'
     await displayMessages(res.data.messages, res.data)
   } catch (e) {
-    joinError.value = e.response?.data?.error || 'Failed to start. Try again.'
+    joinError.value = e.response?.data?.error || 'Грешка. Обиди се повторно.'
   } finally {
     starting.value = false
   }
@@ -244,7 +255,7 @@ async function submitAnswer() {
   currentQuestion.value = ''
   currentOptions.value = []
 
-  const userMsg = { type: 'user', text: `I choose: ${selectedAnswer.value}` }
+  const userMsg = { type: 'user', text: `Го одбрав: ${selectedAnswer.value}` }
   visibleMessages.value.push(userMsg)
   await scrollBottom()
 
@@ -327,7 +338,6 @@ async function scrollBottom() {
   margin: 0 auto;
   background: #f8faff;
 }
-
 .chat-header {
   display: flex;
   align-items: center;
@@ -365,22 +375,40 @@ async function scrollBottom() {
   box-shadow: 0 8px 40px rgba(79,70,229,0.15);
 }
 .error-card { border: 3px solid #ef4444; }
-.join-emoji { font-size: 4rem; margin-bottom: 16px; }
-.join-card h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 12px; }
-.join-card p { color: #64748b; margin-bottom: 28px; }
+.join-logo { margin-bottom: 24px; }
+.logo-img { width: 150px; height: 150px; object-fit: contain; }
+.join-card h2 { font-size: 1.5rem; font-weight: 900; margin-bottom: 6px; color: #4f46e5; }
+.join-card p { color: #64748b; font-size: 0.9rem; margin-bottom: 8px; }
+.welcome-text { margin-bottom: 24px !important; font-size: 0.95rem; }
 .join-card .form-group { text-align: left; }
 .start-btn { width: 100%; justify-content: center; padding: 14px; font-size: 1.05rem; margin-top: 8px; border-radius: 14px; }
 .start-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+
+/* Chat Header */
+.chat-header {
+  padding: 12px 20px;
+  background: white;
+  border-bottom: 2px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 0.85rem;
+  color: #64748b;
+  font-weight: 600;
+}
+.progress-bar { flex: 1; height: 6px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #06b6d4); border-radius: 99px; transition: width 0.5s ease; }
 
 /* Chat Body */
 .chat-body {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 20px 0;
+  padding: 0;
   display: flex;
   flex-direction: column;
 }
-.messages { flex: 1; display: flex; flex-direction: column; gap: 8px; }
+.messages { flex: 1; display: flex; flex-direction: column; gap: 8px; padding: 20px 20px 0; }
 
 .bot-bubble { display: flex; align-items: flex-end; gap: 8px; }
 .bubble-avatar { font-size: 1.4rem; flex-shrink: 0; }
@@ -453,6 +481,7 @@ async function scrollBottom() {
   position: sticky;
   bottom: 0;
   animation: slideUp 0.3s ease;
+  margin: 20px 0 0 0;
 }
 @keyframes slideUp {
   from { transform: translateY(20px); opacity: 0; }
@@ -570,5 +599,21 @@ async function scrollBottom() {
   background: #fee2e2; color: #991b1b;
   padding: 10px 14px; border-radius: 10px;
   font-size: 0.9rem; margin-bottom: 12px;
+}
+
+/* Responsive for mobile/tablet */
+@media (max-width: 768px) {
+  .join-card {
+    padding: 36px 28px;
+  }
+  .logo-img { width: 180px; height: 100px; }
+  .join-card h2 { font-size: 1.3rem; }
+  .join-card p { font-size: 0.85rem; }
+  .chat-header {
+    padding: 10px 16px;
+    font-size: 0.8rem;
+  }
+  .progress-bar { height: 5px; }
+  .chat-app { max-width: 100%; }
 }
 </style>
