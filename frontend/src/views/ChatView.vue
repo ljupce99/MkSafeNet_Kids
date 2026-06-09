@@ -59,6 +59,7 @@
         <div v-for="(msg, i) in visibleMessages" :key="i"
              class="msg-wrap" :class="'msg-' + msg.type">
           <div v-if="msg.type === 'bot' || msg.type === 'success'" class="bot-bubble">
+            <span class="bubble-avatar">🤖</span>
             <div class="bubble" :class="msg.type">{{ msg.text }}</div>
           </div>
           <div v-else-if="msg.type === 'system'" class="system-box">
@@ -68,6 +69,7 @@
 
         <div v-if="typing" class="msg-wrap msg-bot">
           <div class="bot-bubble">
+            <span class="bubble-avatar">🤖</span>
             <div class="bubble typing-indicator">
               <span></span><span></span><span></span>
             </div>
