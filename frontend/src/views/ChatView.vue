@@ -1,5 +1,22 @@
 <template>
   <div class="chat-app">
+
+    <!-- Header -->
+    <div class="chat-header">
+      <div class="bot-avatar">🤖</div>
+      <div class="bot-info">
+        <span class="bot-name">SafeBot</span>
+        <span class="bot-status">{{ sessionInfo?.sessionName || 'Вежбаме, учиме и препознаваме „Фишинг" напади.' }} · {{ sessionInfo?.schoolName }}</span>
+      </div>
+      <div v-if="phase !== 'COMPLETE'" class="progress-wrap">
+        <div class="progress-bar">
+          <div class="progress-fill" :style="{ width: progressPct + '%' }"></div>
+        </div>
+        <span class="progress-label">{{ scenarioProgress }}</span>
+      </div>
+    </div>
+
+
     <!-- Join Screen -->
     <div v-if="phase === 'JOIN'" class="join-screen">
       <div class="join-card">
@@ -320,6 +337,24 @@ async function scrollBottom() {
   margin: 0 auto;
   background: #f8faff;
 }
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: white;
+  border-bottom: 2px solid #e2e8f0;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+.bot-avatar { font-size: 2.4rem; }
+.bot-info { flex: 1; }
+.bot-name { display: block; font-weight: 900; font-size: 1.1rem; color: #4f46e5; }
+.bot-status { font-size: 0.78rem; color: #64748b; }
+
+.progress-wrap { display: flex; align-items: center; gap: 8px; }
+.progress-bar { width: 120px; height: 8px; background: #e2e8f0; border-radius: 99px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #4f46e5, #06b6d4); border-radius: 99px; transition: width 0.5s ease; }
+.progress-label { font-size: 0.78rem; color: #64748b; white-space: nowrap; }
 
 /* Join Screen */
 .join-screen {
