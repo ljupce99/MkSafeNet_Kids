@@ -25,7 +25,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth.js'
 
@@ -35,13 +35,16 @@ const form = ref({ username: '', password: '' })
 const error = ref('')
 const loading = ref(false)
 
+onMounted(() => {
+  if (auth.token) router.replace(auth.getDashboardRouteByRole())
+})
+
 async function handleLogin() {
   error.value = ''
   loading.value = true
   try {
     const data = await auth.login(form.value.username, form.value.password)
-    if (data.role === 'ADMIN') router.push('/admin')
-    else router.push('/teacher')
+    router.replace(auth.getDashboardRouteByRole(data.role))
   } catch (e) {
     error.value = e.response?.data?.error || 'Login failed. Check your credentials.'
   } finally {

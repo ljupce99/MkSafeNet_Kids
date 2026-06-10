@@ -39,18 +39,18 @@ public class DataSeeder implements CommandLineRunner {
     }
 
     private void seedDemoSchoolAndTeacher() {
-        if (!schoolRepository.existsByName("Greenwood Primary School")) {
+        if (!schoolRepository.existsByName("ООУ „Гоце Делчев“")) {
             School school = School.builder()
-                .name("Greenwood Primary School")
-                .address("123 Oak Street")
-                .city("Springfield")
+                .name("ООУ „Гоце Делчев“")
+                .address("ул. „Цветан Димов“, бр. 1")
+                .city("Кавадарци")
                 .build();
             schoolRepository.save(school);
 
             User teacher = User.builder()
                 .username("teacher")
                 .password(passwordEncoder.encode("teacher123"))
-                .displayName("Ms. Sarah Johnson")
+                .displayName("Наставник Јована Јованова")
                 .role(User.Role.TEACHER)
                 .school(school)
                 .build();

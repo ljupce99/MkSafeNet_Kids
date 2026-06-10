@@ -26,6 +26,12 @@ export const useAuthStore = defineStore('auth', () => {
     return res.data
   }
 
+  function getDashboardRouteByRole(userRole = role.value) {
+    if (userRole === 'ADMIN') return '/admin'
+    if (userRole === 'TEACHER') return '/teacher'
+    return '/login'
+  }
+
   function logout() {
     token.value = null
     role.value = null
@@ -35,5 +41,15 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.clear()
   }
 
-  return { token, role, displayName, schoolId, schoolName, isLoggedIn, login, logout }
+  return {
+    token,
+    role,
+    displayName,
+    schoolId,
+    schoolName,
+    isLoggedIn,
+    login,
+    logout,
+    getDashboardRouteByRole
+  }
 })

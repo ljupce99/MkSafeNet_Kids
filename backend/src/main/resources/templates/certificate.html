@@ -80,7 +80,7 @@
     }
     .footer {
       width: 100%;
-      margin-top: 6mm;
+      margin-top: 12mm; /* Малку зголемено растојание за подобар баланс */
       border-collapse: collapse;
     }
     .footer td {
@@ -110,7 +110,6 @@
   <div class="container">
     <div class="inner">
 
-      <!-- Mksafenet Logo: place file at src/main/resources/templates/logo.png -->
       <div class="logo">
         <img src="logo.png" alt="MKSafeNet"/>
       </div>
@@ -129,14 +128,9 @@
 
       <table class="footer">
         <tr>
+          <td></td>
+
           <td>
-            <div class="sig-line">
-              <div class="sig-name">MKSafeNet</div>
-              <div class="sig-role">DIRECTOR</div>
-            </div>
-          </td>
-          <td>
-            <!-- Compact seal -->
             <svg width="80" height="80" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
               <circle cx="60" cy="60" r="55" fill="none" stroke="#c9a227" stroke-width="2"/>
               <circle cx="60" cy="60" r="48" fill="none" stroke="#c9a227" stroke-width="1"/>
@@ -145,6 +139,7 @@
                        fill="#c9a227"/>
             </svg>
           </td>
+
           <td>
             <div class="sig-line">
               <div class="sig-name"

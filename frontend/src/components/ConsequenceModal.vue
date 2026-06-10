@@ -3,7 +3,7 @@
     <div class="consequence-panel" :class="'type-' + typeClass">
       <div class="consequence-header">
         <div class="consequence-icon">{{ icon }}</div>
-        <h2>Што се случи??...</h2>
+        <h2>Што се случи?</h2>
       </div>
 
       <div class="consequence-feed">
@@ -57,13 +57,30 @@ onMounted(async () => {
 async function showMessages() {
   feedTyping.value = true
   for (const msg of props.messages) {
-    await delay(Math.min(msg.delayMs > 0 ? msg.delayMs : 400, 700))
+    const ms = computeModalDelay(msg)
+    await delay(ms)
     feedTyping.value = false
     visibleMsgs.value.push(msg)
+    // show typing again briefly between messages
     feedTyping.value = true
   }
   feedTyping.value = false
   allShown.value = true
+}
+
+// Compute a small, readable delay for modal messages. Keeps delays shorter than chat but
+// slightly slower than the old modal default so users can read the content.
+function computeModalDelay(msg) {
+  const text = (msg && (msg.text || msg.title || '')) || ''
+  const explicit = Number(msg?.delayMs) || 0
+
+  // If explicit delay provided, respect it but clamp to [300, 1200]
+  if (explicit > 0) return Math.min(1200, Math.max(300, explicit))
+
+  // Estimate from length with a conservative multiplier (ms per char)
+  const perChar = 35
+  const estimated = Math.min(1200, Math.max(500, Math.floor(text.length * perChar)))
+  return estimated
 }
 
 function handleDone() {

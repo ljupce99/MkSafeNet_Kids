@@ -3,7 +3,7 @@
 
     <!-- Header -->
     <div class="chat-header">
-      <div class="bot-avatar">🤖</div>
+      <div class="bot-avatar"><img src="../assets/logo.png" alt="MkSafeNet" class="header-logo" /></div>
       <div class="bot-info">
         <span class="bot-name">SafeBot</span>
         <span class="bot-status">{{ sessionInfo?.sessionName || 'Вежбаме, учиме и препознаваме „Фишинг" напади.' }} · {{ sessionInfo?.schoolName }}</span>
@@ -69,7 +69,7 @@
 
         <div v-if="typing" class="msg-wrap msg-bot">
           <div class="bot-bubble">
-            <span class="bubble-avatar">🤖</span>
+            <img src="../assets/logo.png" alt="" class="bubble-avatar-img" />
             <div class="bubble typing-indicator">
               <span></span><span></span><span></span>
             </div>
@@ -227,11 +227,20 @@ async function startChat() {
 }
 
 async function displayMessages(messages, responseData) {
+  // Normalize incoming messages to handle any malformed entries created by the admin editor
+  messages = normalizeIncomingMessages(messages || [])
+  console.log(messages)
+  // Keep typing indicator visible while messages are being revealed
   typing.value = true
   for (const msg of messages) {
-    await delay(msg.delayMs > 0 ? Math.min(msg.delayMs, 800) : 200)
-    visibleMessages.value.push(msg)
-    await scrollBottom()
+    // Final sanitize + split pass to ensure no stray backslash artifacts remain
+    const parts = sanitizeAndSplit(msg)
+    for (const e of parts) {
+      const ms = computeDisplayDelay(e)
+      await delay(ms)
+      visibleMessages.value.push(e)
+      await scrollBottom()
+    }
   }
   typing.value = false
 
@@ -311,15 +320,45 @@ async function handleComplete(data) {
   visibleMessages.value = []
   phase.value = 'COMPLETE'
   if (data.messages) {
-    for (const msg of data.messages) {
-      await delay(Math.min(msg.delayMs > 0 ? msg.delayMs : 400, 800))
-      visibleMessages.value.push(msg)
+    const msgs = normalizeIncomingMessages(data.messages || [])
+    for (const msg of msgs) {
+      const parts = sanitizeAndSplit(msg)
+      for (const e of parts) {
+        const ms = computeDisplayDelay(e, { complete: true })
+        await delay(ms)
+        visibleMessages.value.push(e)
+      }
     }
   }
 }
 
 function delay(ms) {
-  return new Promise(resolve => setTimeout(resolve, Math.max(ms, 100)))
+  // ms = 0
+  return new Promise(resolve => setTimeout(resolve, Math.max(ms, 150)))
+}
+
+// Estimate an appropriate display delay for a message so messages appear at a readable pace.
+// - If msg.delayMs is present and > 0: use it but bound it to a reasonable range.
+// - Otherwise estimate from message text length (chars * 40ms) with min/max bounds.
+function computeDisplayDelay(msg, opts = {}) {
+  const text = (msg && (msg.text || msg.title || '')) || ''
+  const explicit = Number(msg?.delayMs) || 0
+
+  // Reading speed estimate: ~40ms per character (fast). Use a more conservative multiplier for readability.
+  const perChar = 45
+  const estimated = Math.min(3000, Math.max(700, Math.floor(text.length * perChar)))
+
+  // If an explicit delay is provided, respect it but clamp to [300, 3000]
+  if (explicit > 0) {
+    return Math.min(3000, Math.max(300, explicit))
+  }
+
+  // For complete-screen messages we can allow slightly shorter delays but keep readable
+  if (opts.complete) {
+    return Math.min(1800, Math.max(500, Math.floor(estimated * 0.85)))
+  }
+
+  return estimated
 }
 
 async function scrollBottom() {
@@ -327,6 +366,190 @@ async function scrollBottom() {
   if (chatBody.value) {
     chatBody.value.scrollTop = chatBody.value.scrollHeight
   }
+}
+
+// Normalize message arrays coming from the backend or admin editor.
+// Some older/broken scenarios may have been saved as multiple short message objects
+// where each line was treated as a separate message and the `type` field contains
+// the line text. This function merges such stray lines into the previous message
+// text and, if a stray line contains only digits, treats it as a delay value for
+// the previous message.
+function normalizeIncomingMessages(list) {
+  const allowed = new Set(['bot', 'system', 'success', 'user', 'consequence'])
+  const out = []
+
+  function pushMsg(msg) {
+    // normalize type
+    const t = String(msg.type || '').toLowerCase()
+    const type = allowed.has(t) ? t : 'system'
+    msg.type = type
+    // merge consecutive system messages
+    if (type === 'system' && out.length && out[out.length - 1].type === 'system') {
+      const prev = out[out.length - 1]
+      prev.text = (prev.text ? prev.text + '\n' : '') + String(msg.text || '')
+      if (!prev.delayMs && msg.delayMs) prev.delayMs = msg.delayMs
+    } else {
+      out.push({ type, text: String(msg.text || ''), delayMs: Number(msg.delayMs) || 0, icon: msg.icon || null })
+    }
+  }
+
+  for (const raw of (list || [])) {
+    const m = raw || {}
+    let rawType = m.type === undefined || m.type === null ? '' : String(m.type)
+    let rawText = m.text === undefined || m.text === null ? '' : String(m.text)
+    const delay = Number(m.delayMs) || 0
+
+    // cleanup common artifacts
+    rawType = rawType.replace(/\\0/g, '').trim()
+    rawText = rawText.replace(/\\0/g, '').trim()
+
+    const typeLower = rawType.toLowerCase()
+    // Case 1: valid explicit type
+    if (allowed.has(typeLower)) {
+      pushMsg({ type: typeLower, text: rawText, delayMs: delay, icon: m.icon || null })
+      continue
+    }
+
+    // Case 2: numeric-only text -> treat as delay for previous message
+    if (/^\d+$/.test(rawText) && out.length) {
+      const prev = out[out.length - 1]
+      if (!prev.delayMs || prev.delayMs === 0) prev.delayMs = parseInt(rawText, 10)
+      continue
+    }
+
+    // Case 3: rawText present but no valid type -> default to bot (typical incoming message)
+    if (rawText) {
+      pushMsg({ type: 'bot', text: rawText, delayMs: delay, icon: m.icon || null })
+      continue
+    }
+
+    // Case 4: rawType present but not a known token -> likely a continuation line (from broken save)
+    if (rawType) {
+      if (out.length) {
+        const prev = out[out.length - 1]
+        prev.text = (prev.text ? prev.text + '\n' : '') + rawType
+        if (!prev.delayMs && delay) prev.delayMs = delay
+      } else {
+        // no previous message: create a system message
+        pushMsg({ type: 'system', text: rawType, delayMs: delay, icon: m.icon || null })
+      }
+      continue
+    }
+
+    // Fallback: push empty system
+    pushMsg({ type: 'system', text: '', delayMs: delay, icon: m.icon || null })
+  }
+
+  return out
+}
+
+// Expand a message object if its text contains embedded message headers.
+// Returns an array of message objects to render in sequence.
+function expandMessageObject(msg) {
+  // Simple expansion: do not attempt to split text into additional messages here.
+  // Return the msg itself (sanitized). This avoids accidental splitting/merging.
+  const text = String(msg.text || '').replace(/\\0/g, '').trim()
+  return [{ type: msg.type || 'system', text: text.replace(/\\\d+\s*$/, '').trim(), delayMs: Number(msg.delayMs) || 0, icon: msg.icon || null }]
+}
+
+// Sanitize a normalized message and split it into parts safe for display.
+// This is a final defensive pass: removes '\0' markers, extracts trailing delays,
+// splits any embedded headers, and ensures every returned part has a valid type.
+function sanitizeAndSplit(msg) {
+  if (!msg) return []
+  const allowed = new Set(['bot', 'system', 'success', 'user', 'consequence'])
+  const type = allowed.has(String(msg.type || '').toLowerCase()) ? String(msg.type).toLowerCase() : 'system'
+
+  // Clean the raw text first
+  let text = String(msg.text || '')
+    .replace(/\\0/g, '')
+    .replace(/\\\d+\s*$/, '')
+
+  // Split embedded message headers inside the text, e.g.
+  // "📦 title\n bot\next message\n system\..."
+  const lines = text.split('\n')
+  const out = []
+  let current = { type, text: '', delayMs: Number(msg.delayMs) || 0, icon: msg.icon || null }
+
+  function flush() {
+    const cleaned = String(current.text || '').trim()
+    if (cleaned) out.push({ type: current.type, text: cleaned, delayMs: Number(current.delayMs) || 0, icon: current.icon || null })
+    current = { type: 'system', text: '', delayMs: 0, icon: msg.icon || null }
+  }
+
+  for (const rawLine of lines) {
+    const line = String(rawLine || '').trimEnd()
+    if (!line.trim()) continue
+
+    // Detect header-like lines: "bot\..." or "system\..."
+    const headerMatch = line.match(/^(bot|system|success|user|consequence)\\(.*)$/i)
+    if (headerMatch) {
+      flush()
+      const hType = headerMatch[1].toLowerCase()
+      const hText = (headerMatch[2] || '').replace(/\\0/g, '').trim()
+      current = { type: hType, text: hText, delayMs: 0, icon: msg.icon || null }
+      continue
+    }
+
+    // Detect line endings that contain a delay suffix: "...\2400"
+    const delayMatch = line.match(/^(.*)\\(\d+)$/)
+    if (delayMatch) {
+      current.text = (current.text ? current.text + '\n' : '') + delayMatch[1].trim()
+      current.delayMs = Number(delayMatch[2]) || current.delayMs || 0
+      flush()
+      continue
+    }
+
+    // Normal text line: append to current message
+    current.text = (current.text ? current.text + '\n' : '') + line.trim()
+  }
+
+  flush()
+  return out.length ? out : [{ type, text: text.trim(), delayMs: Number(msg.delayMs) || 0, icon: msg.icon || null }]
+}
+
+// Final cleanup: split any leftover embedded headers inside message texts and
+// remove stray '\0' and trailing '\digits' artifacts.
+// finalizeNormalizedMessages not needed with the simplified normalizer; keep small wrapper
+function finalizeNormalizedMessages(list) {
+  const allowed = new Set(['bot', 'system', 'success', 'user', 'consequence'])
+  return (list || []).map(m => ({ type: (m.type && allowed.has(m.type)) ? m.type : 'system', text: String(m.text || '').replace(/\\0/g, '').trim(), delayMs: Number(m.delayMs) || 0, icon: m.icon || null }))
+}
+
+// Lightweight embedded header parser: recognizes 'type\text' or 'type\text\delay'
+function parseEmbeddedHeader(s) {
+  if (!s || !s.includes('\\')) return null
+  const m = s.match(/^([^\\]+)\\([\s\S]*?)(?:\\(\d+))?$/)
+  if (!m) return null
+  const type = m[1].trim()
+  const text = (m[2] || '').trim()
+  const delayMs = m[3] ? parseInt(m[3], 10) : 0
+  const allowed = new Set(['bot', 'system', 'success', 'user', 'consequence'])
+  if (!allowed.has(type)) return null
+  return { type, text, delayMs }
+}
+
+// We no longer need a complex embedded splitter. If embedded headers exist, parseEmbeddedHeader
+// will detect and handle them when necessary. Keep this function minimal and safe.
+function splitEmbeddedMessagesInText(raw) {
+  if (!raw) return []
+  const lines = String(raw).replace(/\r/g, '').split('\n')
+  const out = []
+  let current = null
+  for (const line of lines) {
+    const m = parseEmbeddedHeader(line)
+    if (m) {
+      if (current) out.push(current)
+      out.push(m)
+      current = null
+      continue
+    }
+    // if current exists, append; else create system
+    if (!current) current = { type: 'system', text: line.trim(), delayMs: 0 }
+    else current.text = (current.text ? current.text + '\n' : '') + line.trim()
+  }
+  if (current) out.push(current)
+  return out.map(m => ({ type: m.type || 'system', text: String(m.text || '').replace(/\\0/g, '').trim(), delayMs: Number(m.delayMs) || 0, icon: m.icon || null }))
 }
 </script>
 
@@ -349,6 +572,8 @@ async function scrollBottom() {
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
 }
 .bot-avatar { font-size: 2.4rem; }
+.header-logo { width: 46px; height: 46px; object-fit: contain; border-radius: 8px; }
+.bubble-avatar-img { width: 34px; height: 34px; object-fit: contain; border-radius: 6px; flex-shrink: 0; }
 .bot-info { flex: 1; }
 .bot-name { display: block; font-weight: 900; font-size: 1.1rem; color: #4f46e5; }
 .bot-status { font-size: 0.78rem; color: #64748b; }
@@ -538,6 +763,12 @@ async function scrollBottom() {
   width: 100%;
   text-align: center;
   box-shadow: 0 8px 40px rgba(79,70,229,0.15);
+  /* allow the card to grow but not overflow viewport; enable internal scrolling when content is long */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  max-height: calc(100vh - 96px);
+  overflow: auto;
 }
 .score-circle {
   width: 120px; height: 120px;
@@ -546,12 +777,16 @@ async function scrollBottom() {
   align-items: center; justify-content: center;
   margin: 0 auto 16px;
   border: 6px solid;
+  box-sizing: border-box;
+  flex: 0 0 120px;
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
 }
 .score-great { border-color: #10b981; background: #d1fae5; color: #065f46; }
 .score-ok { border-color: #f59e0b; background: #fef3c7; color: #92400e; }
 .score-low { border-color: #ef4444; background: #fee2e2; color: #991b1b; }
-.score-num { font-size: 2.2rem; font-weight: 900; line-height: 1; }
-.score-label { font-size: 0.8rem; font-weight: 700; }
+.score-num { font-size: 2.2rem; font-weight: 900; line-height: 1; white-space: nowrap; }
+.score-label { font-size: 0.8rem; font-weight: 700; line-height: 1; white-space: nowrap; }
 .grade-badge {
   display: inline-block;
   background: #4f46e5; color: white;
@@ -584,6 +819,11 @@ async function scrollBottom() {
 .result-icon { font-size: 1.1rem; flex-shrink: 0; }
 .result-title { flex: 1; font-weight: 600; }
 .result-pts { color: #64748b; font-weight: 700; }
+
+/* Make result table and rows full width inside the card and ensure long titles wrap */
+.results-table { width: 100%; }
+.result-row { width: 100%; }
+.result-title { min-width: 0; overflow-wrap: anywhere; white-space: normal; }
 
 .complete-messages { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
 .complete-msg {

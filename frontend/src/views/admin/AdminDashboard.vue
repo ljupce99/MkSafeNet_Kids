@@ -262,14 +262,14 @@
                 <div class="form-group"><label>Наслов *</label><input v-model="currentScenario.title" /></div>
                 <div class="form-group"><label>Тип *</label><input v-model.number="currentScenario.typeOfScenario" type="number" min="1" max="5" /></div>
                 <div class="form-group"><label>Поени *</label><input v-model.number="currentScenario.points" type="number" min="0" /></div>
-                <div class="form-group"><label>Подесување на пораки (type\text\delayMs по ред)</label><textarea v-model="currentScenario.setupMessagesText" placeholder="bot\Добредојдовте во сценариото\0&#10;system\Цитај ја пораката\1000"></textarea></div>
+                <div class="form-group"><label>Подесување на пораки (type\text, последната линија завршува со \delayMs)</label><textarea v-model="currentScenario.setupMessagesText" placeholder="bot\Прва линија на порака&#10;Втора линија\1000"></textarea></div>
                 <div class="form-group"><label>Прашање *</label><textarea v-model="currentScenario.question"></textarea></div>
                 <div class="form-group"><label>Опции (key\text по ред)</label><textarea v-model="currentScenario.optionsText" placeholder="A\прва опција&#10;B\втора опција&#10;C\трета опција"></textarea></div>
                 <div class="form-group"><label>Точни одговори (секој одговор во нов ред)</label><textarea v-model="currentScenario.correctAnswersText" placeholder="A&#10;B"></textarea></div>
                 <div class="form-group"><label>Објансување за точен одговор*</label><textarea v-model="currentScenario.correctExplanation"></textarea></div>
                 <div class="form-group"><label>Објаснување за неточен одговор*</label><textarea v-model="currentScenario.wrongExplanation"></textarea></div>
                 <div class="form-group"><label>Тип на последица</label><input v-model="currentScenario.consequenceType" placeholder="пример: ACCOUNT_HACKED" /></div>
-                <div class="form-group"><label>Порака од последица (type\text\delayMs по ред)</label><textarea v-model="currentScenario.consequenceMessagesText" placeholder="последица\Го притисна!\0&#10;последица\Твојата сметка е компромитирана\1500"></textarea></div>
+                <div class="form-group"><label>Порака од последица (type\text, последната линија завршува со \delayMs)</label><textarea v-model="currentScenario.consequenceMessagesText" placeholder="последица\Го притисна!&#10;Твојата сметка е компромитирана\1500"></textarea></div>
                 <div v-if="scenarioError" class="error-msg">{{ scenarioError }}</div>
                 <button class="btn btn-primary" style="width:100%" @click="saveScenario">{{ editingScenarioId ? 'промени' : 'додади' }}</button>
               </div>
@@ -343,6 +343,7 @@ async function loadTeachers() {
 
 async function loadScenarios() {
   scenarios.value = (await api.get('/admin/scenarios')).data
+  console.log(scenarios.value);
 }
 
 async function viewSchool(id) {
@@ -397,10 +398,13 @@ function openAddScenario() {
 function editScenario(scenario) {
   editingScenarioId.value = scenario.id
 
-  // Convert setupMessages to text format (type\text\delayMs per line)
-  const setupMessagesText = (scenario.setupMessages || [])
-    .map(msg => `${msg.type}\\${msg.text}\\${msg.delayMs}`)
-    .join('\n')
+  // Normalize any malformed incoming message arrays (older saved scenarios) and
+  // convert messages to multiline-safe blocks:
+  // type\first line
+  // middle lines
+  // last line\delayMs
+  const setupMessagesClean = normalizeIncomingMessageArray(scenario.setupMessages || [])
+  const setupMessagesText = formatMessageRows(setupMessagesClean)
 
   // Convert options array to text format (key\text per line)
   const optionsText = (scenario.options || [])
@@ -410,10 +414,9 @@ function editScenario(scenario) {
   // Convert correctAnswers to text format (one per line)
   const correctAnswersText = Array.from(scenario.correctAnswers || []).join('\n')
 
-  // Convert consequenceMessages to text format (type\text\delayMs per line)
-  const consequenceMessagesText = (scenario.consequenceMessages || [])
-    .map(msg => `${msg.type}\\${msg.text}\\${msg.delayMs}`)
-    .join('\n')
+  // Convert consequence messages using the same multiline-safe block format.
+  const consequenceMessagesClean = normalizeIncomingMessageArray(scenario.consequenceMessages || [])
+  const consequenceMessagesText = formatMessageRows(consequenceMessagesClean)
 
   currentScenario.value = {
     ...scenario,
@@ -434,15 +437,8 @@ async function saveScenario() {
   }
 
   try {
-    // Parse setupMessages from text format (type\text\delayMs per line)
-    const setupMessages = currentScenario.value.setupMessagesText
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const [type, text, delayMs] = line.split('\\').map(s => s.trim())
-        return { type, text, delayMs: parseInt(delayMs) || 0 }
-      })
+    // Parse multiline-safe message blocks.
+    const setupMessages = parseMessageRows(currentScenario.value.setupMessagesText)
 
     // Parse options from text format (key\text per line)
     const options = currentScenario.value.optionsText
@@ -460,15 +456,8 @@ async function saveScenario() {
       .map(line => line.trim())
       .filter(line => line.length > 0)
 
-    // Parse consequenceMessages from text format (type\text\delayMs per line)
-    const consequenceMessages = currentScenario.value.consequenceMessagesText
-      .split('\n')
-      .map(line => line.trim())
-      .filter(line => line.length > 0)
-      .map(line => {
-        const [type, text, delayMs] = line.split('\\').map(s => s.trim())
-        return { type, text, delayMs: parseInt(delayMs) || 0 }
-      })
+    // Parse consequence messages using the same multiline-safe logic.
+    const consequenceMessages = parseMessageRows(currentScenario.value.consequenceMessagesText)
 
     // Build payload
     const payload = {
@@ -508,6 +497,74 @@ function closeScenarioModal() {
   editingScenarioId.value = null
 }
 
+function formatMessageRows(messages) {
+  return (messages || [])
+      .map((msg) => {
+        const type = String(msg?.type || '').trim()
+        const delay = Number.parseInt(msg?.delayMs, 10)
+        const delayStr = Number.isFinite(delay) ? delay : 0
+        const text = String(msg?.text || '')
+
+        // Directly wrap the entire block. This gracefully formats both
+        // single-line and multi-line strings cleanly without extra loops.
+        return `${type}\\${text}\\${delayStr}`
+      })
+      .join('\n')
+}
+
+function parseMessageRows(rawText) {
+  const lines = String(rawText || '').replace(/\r/g, '').split('\n')
+  const blocks = []
+  let currentBlock = null
+
+  // Match strict allowed message types at the start of a line
+  const typePrefixRegex = /^(bot|system|user|consequence|success)\\(.*)$/
+
+  // Phase 1: Group lines into cohesive type blocks
+  for (const line of lines) {
+    const match = typePrefixRegex.exec(line)
+
+    if (match) {
+      if (currentBlock) {
+        blocks.push(currentBlock)
+      }
+      currentBlock = {
+        type: match[1],
+        lines: [match[2]]
+      }
+    } else {
+      if (currentBlock) {
+        currentBlock.lines.push(line)
+      }
+    }
+  }
+
+  if (currentBlock) {
+    blocks.push(currentBlock)
+  }
+
+  // Phase 2: Isolate trailing delays from the completed text blocks
+  return blocks.map(block => {
+    const fullText = block.lines.join('\n')
+    const delayMatch = /\\(\d+)$/.exec(fullText)
+
+    let text = fullText
+    let delayMs = 0
+
+    if (delayMatch) {
+      delayMs = Number.parseInt(delayMatch[1], 10) || 0
+      // Strip out the matched delay string from the end of the text
+      text = fullText.substring(0, fullText.length - delayMatch[0].length)
+    }
+
+    return {
+      type: block.type,
+      text: text,
+      delayMs: delayMs
+    }
+  })
+}
+
 function logout() { auth.logout(); router.push('/login') }
 function scoreClass(s) {
   if (s >= 80) return 'score-green'
@@ -517,6 +574,44 @@ function scoreClass(s) {
 function fmtDate(d) {
   if (!d) return '-'
   return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+// Reconstruct incoming message arrays that were mis-saved as many single-line
+// objects where the `type` field contains the actual line text. This function
+// merges continuation lines into the previous message and extracts numeric
+// delay values when they appear on their own line or at the end.
+function normalizeIncomingMessageArray(list) {
+  const allowed = new Set(['bot', 'system', 'success', 'user', 'consequence'])
+  const out = []
+  for (const raw of (list || [])) {
+    const msg = raw || {}
+    const t = String(msg.type || '').trim()
+    const hasText = msg.text !== null && msg.text !== undefined
+
+    if (allowed.has(t)) {
+      out.push({ type: t, text: hasText ? String(msg.text) : '', delayMs: Number(msg.delayMs) || 0, icon: msg.icon || null })
+      continue
+    }
+
+    if (!out.length) {
+      if (hasText && /^\d+$/.test(String(msg.text).trim())) {
+        out.push({ type: 'system', text: t, delayMs: parseInt(msg.text, 10) || 0, icon: msg.icon || null })
+      } else {
+        out.push({ type: 'system', text: t + (hasText ? '\n' + String(msg.text) : ''), delayMs: 0, icon: msg.icon || null })
+      }
+      continue
+    }
+
+    const prev = out[out.length - 1]
+    if (hasText && /^\d+$/.test(String(msg.text).trim()) && (!prev.delayMs || prev.delayMs === 0)) {
+      prev.delayMs = parseInt(msg.text, 10) || prev.delayMs
+      continue
+    }
+
+    const append = hasText ? (t + (String(msg.text).trim() ? '\n' + String(msg.text) : '')) : t
+    prev.text = (prev.text ? prev.text + '\n' : '') + append
+  }
+  return out
 }
 </script>
 

@@ -23,10 +23,13 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
-  if (!to.meta.requiresAuth) return true
   const auth = useAuthStore()
+  if (to.path === '/login' && auth.token) {
+    return auth.getDashboardRouteByRole()
+  }
+  if (!to.meta.requiresAuth) return true
   if (!auth.token) return '/login'
-  if (to.meta.role && auth.role !== to.meta.role) return '/login'
+  if (to.meta.role && auth.role !== to.meta.role) return auth.getDashboardRouteByRole()
   return true
 })
 

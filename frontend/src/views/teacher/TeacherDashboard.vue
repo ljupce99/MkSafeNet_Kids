@@ -32,7 +32,7 @@
           <h2 class="page-title">{{ activeDetailSession.name }}</h2>
           <div class="session-status">
             <span class="badge" :class="activeDetailSession.active ? 'badge-green' : 'badge-red'">
-              {{ activeDetailSession.active ? '● активно' : '○ неактивно' }}
+              {{ activeDetailSession.active ? 'активно' : 'неактивно' }}
             </span>
             <button class="btn btn-sm" :class="activeDetailSession.active ? 'btn-danger' : 'btn-success'"
                     @click="toggleSession(activeDetailSession.id, !activeDetailSession.active)">
@@ -124,7 +124,7 @@
             <div class="session-card-top">
               <h3>{{ s.name }}</h3>
               <span class="badge" :class="s.active ? 'badge-green' : 'badge-red'">
-                {{ s.active ? '● Активно' : '○ Неактивно' }}
+                {{ s.active ? 'Активно' : 'Неактивно' }}
               </span>
             </div>
             <div class="session-meta">
@@ -178,6 +178,9 @@
         </div>
 
         <p class="modal-text">Внеси го името што треба да биде на сертификатот.</p>
+        <p class="modal-text warning-text">
+          <strong>Напомена:</strong> Поради ограничување на генераторот, поддржана е исклучиво латиница.
+        </p>
 
         <div class="form-group">
           <label>Име</label>
@@ -185,7 +188,7 @@
             v-model="certificateName"
             type="text"
             placeholder="пример: Петар Петровски"
-            @keyup.enter="downloadCertificate"
+            @keyup.enter="handleDownload"
           />
         </div>
 
@@ -193,7 +196,7 @@
 
         <div class="modal-actions">
           <button class="btn btn-secondary" @click="closeCertificateModal" :disabled="certificateLoading">Откажи</button>
-          <button class="btn btn-primary" @click="downloadCertificate" :disabled="certificateLoading">
+          <button class="btn btn-primary" @click="handleDownload" :disabled="certificateLoading">
             {{ certificateLoading ? 'Се генерира...' : 'Download PDF' }}
           </button>
         </div>
@@ -280,6 +283,27 @@ function closeCertificateModal() {
   certificateName.value = ''
   certificateError.value = ''
   certificateLoading.value = false
+}
+
+
+function handleDownload() {
+  certificateError.value = ''
+  const trimmedName = certificateName.value.trim()
+
+  if (!trimmedName) {
+    certificateError.value = 'Името е задолжително!'
+    return
+  }
+
+  // Овој Regex дозволува само латинични букви (A-Z, a-z) и празни места
+  const latinRegex = /^[A-Za-z\s]+$/
+  if (!latinRegex.test(trimmedName)) {
+    certificateError.value = 'Ве молиме користете само латинични букви!'
+    return
+  }
+
+  // Ако сè е во ред, повикај ја твојата оригинална функција
+  downloadCertificate()
 }
 
 async function downloadCertificate() {
@@ -481,5 +505,13 @@ nav button.active { background: #eef2ff; color: #4f46e5; }
   justify-content: flex-end;
   gap: 10px;
   margin-top: 18px;
+}
+
+.warning-text {
+  color: #d97706; /* Топла килибарна/amber боја */
+  font-size: 14px;
+  line-height: 1.5;
+  margin-top: 8px;
+  margin-bottom: 16px;
 }
 </style>
